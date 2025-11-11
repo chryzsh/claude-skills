@@ -27,8 +27,8 @@ CC := x86_64-w64-mingw32-clang
 CFLAGS := -Os -c -DBOF
 TEST_CFLAGS := -g
 
-# Output directory (adjust as needed)
-OUTPUT_DIR := ../../../SA/$(BOFNAME)
+# Output directory - BOFs are always compiled to dist/
+OUTPUT_DIR := dist
 
 # Default target: compile BOF object files for both architectures
 all:

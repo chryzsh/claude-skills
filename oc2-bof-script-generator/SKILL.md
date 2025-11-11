@@ -91,10 +91,11 @@ The format string defines argument types and order. Document it as a comment in 
 
 **Check the compiled BOF filenames:**
 
-1. Look for `.o` files in the BOF project directory (e.g., `dist/`, `bin/`, or root)
+1. Look for `.o` files in the BOF project's `dist/` directory (standard location)
+   - Also check `bin/`, `output/`, or root directory if `dist/` doesn't exist
 2. Note the exact filename (e.g., `cookie-monster-bof.x64.o`, `curl.x64.o`)
 3. Extract the base name (remove `.x64.o` or `.x86.o`) - this will be your `base_binary_name`
-4. Alternatively, check the Makefile for the `BOFNAME` variable
+4. Alternatively, check the Makefile for the `BOFNAME` variable - this defines the output filename
 
 **Example:**
 - Files found: `cookie-monster-bof.x64.o`, `cookie-monster-bof.x86.o`
