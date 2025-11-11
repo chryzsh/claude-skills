@@ -80,7 +80,7 @@ The format string defines argument types and order. Document it as a comment in 
 - `Z` → `BOFArgumentEncoding.WSTR` (wide string)
 - `b` → `BOFArgumentEncoding.BUFFER` (binary data)
 
-### Step 4: Analyze BOF Source Code
+### Step 4: Analyze BOF Source Code and Files
 
 **Read the BOF's main .c file** to understand:
 
@@ -88,6 +88,18 @@ The format string defines argument types and order. Document it as a comment in 
 2. **Argument parsing:** How the BOF uses `BeaconDataParse()` and related functions
 3. **Functionality:** What the BOF actually does (for accurate descriptions)
 4. **OPSEC considerations:** Note any warnings or important behavior
+
+**Check the compiled BOF filenames:**
+
+1. Look for `.o` files in the BOF project directory (e.g., `dist/`, `bin/`, or root)
+2. Note the exact filename (e.g., `cookie-monster-bof.x64.o`, `curl.x64.o`)
+3. Extract the base name (remove `.x64.o` or `.x86.o`) - this will be your `base_binary_name`
+4. Alternatively, check the Makefile for the `BOFNAME` variable
+
+**Example:**
+- Files found: `cookie-monster-bof.x64.o`, `cookie-monster-bof.x86.o`
+- Base name: `cookie-monster-bof`
+- Python script will use: `base_binary_name="cookie-monster-bof"`
 
 **Cross-reference** the source code's argument parsing with the .cna file's `bof_pack()` call to ensure accuracy.
 
@@ -118,11 +130,39 @@ class CommandNameBOF(BaseBOFTask):
     def __init__(self):
         super().__init__(
             "command-name",                    # OC2 command name
-            base_binary_name="bof-filename"   # BOF file without .o extension
+            base_binary_name="bof-filename"   # BOF file without .o/.x64/.x86 extension
         )
 
         self.parser.description = "..."
 ```
+
+**CRITICAL: `base_binary_name` must exactly match the compiled BOF filename**
+
+The `base_binary_name` parameter tells OC2 where to find the compiled BOF files. OC2 will look for:
+- `<base_binary_name>.x64.o` for 64-bit targets
+- `<base_binary_name>.x86.o` for 32-bit targets
+
+**Examples:**
+
+1. **BOF files are `cookie-monster-bof.x64.o` and `cookie-monster-bof.x86.o`**
+   ```python
+   super().__init__("cookie-monster", base_binary_name="cookie-monster-bof")
+   ```
+
+2. **BOF files are `curl.x64.o` and `curl.x86.o`**
+   ```python
+   super().__init__("curl", base_binary_name="curl")
+   ```
+
+3. **BOF files are `enumshares.x64.o` and `enumshares.x86.o`**
+   ```python
+   super().__init__("enumshares", base_binary_name="enumshares")
+   ```
+
+**How to determine the correct `base_binary_name`:**
+1. Check the BOF project's Makefile for the `BOFNAME` variable
+2. Look at actual compiled `.o` files in the project
+3. Verify the .cna file doesn't specify a different name in `script_resource()`
 
 **For multi-BOF projects**, add `base_binary_path`:
 ```python

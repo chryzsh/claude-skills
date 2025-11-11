@@ -56,10 +56,28 @@ Generate a standard BOF project structure:
 
 ```
 mybof/
-├── entry.c          (main BOF code)
+├── entry.c          (main BOF code - MUST be named entry.c)
 ├── beacon.h         (BOF API declarations)
 └── Makefile         (compilation rules)
 ```
+
+**CRITICAL NAMING CONVENTIONS:**
+
+1. **Source file naming**: Always name the main BOF source file `entry.c`
+   - This is the standard convention used across BOF projects
+   - Makes project structure consistent and predictable
+   - Exception: Some older projects use `<project-name>.c` (e.g., `cookie-monster-bof.c`)
+
+2. **Output .o file naming**: The compiled BOF files MUST match the name expected by C2 scripts
+   - Example: If OC2 script uses `base_binary_name="curl"`, files must be `curl.x64.o` and `curl.x86.o`
+   - Example: If OC2 script uses `base_binary_name="cookie-monster-bof"`, files must be `cookie-monster-bof.x64.o`
+   - **The BOFNAME in Makefile determines the output filename**
+   - Verify naming matches OC2/Cobalt Strike script expectations BEFORE compiling
+
+3. **Project directory naming**: Match the project name to simplify organization
+   - Directory: `mybof/`
+   - Output files: `mybof.x64.o`, `mybof.x86.o`
+   - OC2 script location: `~/share/scripts/oc2-scripts/python-scripts-bof/mybof/mybof_bof.s1.py`
 
 Use the templates from `assets/` directory:
 - `assets/entry.c.template` - Basic BOF entry point
