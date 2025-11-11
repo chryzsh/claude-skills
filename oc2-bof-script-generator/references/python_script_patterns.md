@@ -216,4 +216,12 @@ return [
 
 - Class names: `<CommandName>BOF` (PascalCase)
 - Command names: `kebab-case` (as used in OC2)
-- File names: `<project-name>.s1.py` (lowercase with hyphens)
+- File names: `<project-name>_bof.s1.py` (lowercase with hyphens, **MUST include `_bof` suffix**)
+
+**CRITICAL:** The file naming convention requires the `_bof` suffix before `.s1.py`. Examples:
+- `cookie-monster_bof.s1.py` ✓
+- `SQL_bof.s1.py` ✓
+- `enumshares_bof.s1.py` ✓
+- `cookie-monster.s1.py` ✗ (will not work)
+
+Without the `_bof` suffix, OC2 will not recognize or load the script.

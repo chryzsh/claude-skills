@@ -102,10 +102,12 @@ The format string defines argument types and order. Document it as a comment in 
 - Single: `<ProjectName>BOF` (e.g., `CookieMonsterBOF`)
 - Multi: `<Command><Project>BOF` (e.g., `SqlWhoamiBOF`, `SqlInfoBOF`)
 
-**File location:**
+**File naming convention:**
 ```
-~/share/scripts/oc2-scripts/python-scripts-bof/<project-name>/<project-name>.s1.py
+~/share/scripts/oc2-scripts/python-scripts-bof/<project-name>/<project-name>_bof.s1.py
 ```
+
+**IMPORTANT:** The file MUST be named with `_bof` suffix (e.g., `cookie-monster_bof.s1.py`, `SQL_bof.s1.py`). Without the `_bof` suffix, OC2 will not recognize the script.
 
 ### Step 6: Implement Core Components
 
@@ -336,8 +338,10 @@ The README contains tables documenting all implemented BOF scripts. Suggest addi
 
 **Save the generated script to:**
 ```
-~/share/scripts/oc2-scripts/python-scripts-bof/<project-name>/<project-name>.s1.py
+~/share/scripts/oc2-scripts/python-scripts-bof/<project-name>/<project-name>_bof.s1.py
 ```
+
+**CRITICAL:** The file MUST include the `_bof` suffix before `.s1.py` or OC2 will not load it.
 
 **Do NOT save to the BOF project directory.**
 
