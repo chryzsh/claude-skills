@@ -1,0 +1,37 @@
+#include <windows.h>
+#include <stdio.h>
+#include "beacon.h"
+
+/**
+ * BOF Entry Point Template
+ * 
+ * This template provides a basic structure for BOF development.
+ * Customize the argument parsing and implementation as needed.
+ */
+
+// Forward declarations for dynamic resolution if needed
+// DECLSPEC_IMPORT type WINAPI FunctionName(args);
+
+#ifdef BOF
+// BOF entry point
+void go(char* args, int len) {
+    datap parser;
+    BeaconDataParse(&parser, args, len);
+    
+    // Parse arguments
+    // Example: int arg1 = BeaconDataInt(&parser);
+    // Example: char* arg2 = BeaconDataExtract(&parser, NULL);
+    
+    // TODO: Implement BOF logic here
+    
+    BeaconPrintf(CALLBACK_OUTPUT, "BOF executed successfully\n");
+}
+
+#else
+// Test harness for local execution
+int main(int argc, char** argv) {
+    // TODO: Parse command line args and call go()
+    printf("Test mode - implement test harness\n");
+    return 0;
+}
+#endif
