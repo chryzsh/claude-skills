@@ -27,15 +27,16 @@ CC := x86_64-w64-mingw32-clang
 CFLAGS := -Os -c -DBOF
 TEST_CFLAGS := -g
 
-# Output directory - BOFs are always compiled to dist/
-OUTPUT_DIR := dist
+# Output directory - adjust as needed (. for current dir, dist/ for subdirectory, etc.)
+OUTPUT_DIR := .
 
 # Default target: compile BOF object files for both architectures
 all:
 	$(CC_x64) -o $(BOFNAME).x64.o $(COMINCLUDE) $(CFLAGS) entry.c
 	$(CC_x86) -o $(BOFNAME).x86.o $(COMINCLUDE) $(CFLAGS) entry.c
-	mkdir -p $(OUTPUT_DIR)
-	mv $(BOFNAME)*.o $(OUTPUT_DIR)
+	@if [ "$(OUTPUT_DIR)" != "." ]; then \
+		mkdir -p $(OUTPUT_DIR) && mv $(BOFNAME)*.o $(OUTPUT_DIR); \
+	fi
 
 # Test target: compile as executable for local testing
 test:

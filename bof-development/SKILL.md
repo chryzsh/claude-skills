@@ -61,7 +61,7 @@ mybof/
 └── Makefile         (compilation rules)
 ```
 
-**CRITICAL NAMING AND STRUCTURE CONVENTIONS:**
+**CRITICAL NAMING CONVENTIONS:**
 
 1. **Source file naming**: The main BOF source file MUST ALWAYS be named `entry.c`
    - This is the mandatory standard across all BOF projects
@@ -69,16 +69,16 @@ mybof/
    - Makes project structure consistent and predictable
    - **NO EXCEPTIONS** - always use `entry.c`
 
-2. **Output directory**: Compiled BOF files MUST ALWAYS go to `dist/` folder
-   - The Makefile is configured to output to `dist/` directory
-   - After compilation: `dist/<bofname>.x64.o` and `dist/<bofname>.x86.o`
-   - This is the standard location C2 frameworks expect
-
-3. **Output .o file naming**: The compiled BOF files MUST match the name expected by C2 scripts
+2. **Output .o file naming**: The compiled BOF files MUST match the name expected by C2 scripts
    - **The BOFNAME in Makefile determines the output filename**
    - Example: `BOFNAME := curl` produces `curl.x64.o` and `curl.x86.o`
    - Example: `BOFNAME := cookie-monster-bof` produces `cookie-monster-bof.x64.o`
    - Verify naming matches OC2/Cobalt Strike script expectations BEFORE compiling
+
+3. **Output directory**: Keep compiled BOF files in project root or subdirectory as preferred
+   - Default Makefile outputs to current directory (`.`)
+   - Adjust `OUTPUT_DIR` in Makefile if you prefer `dist/`, `bin/`, or other location
+   - Choose location that works best for your workflow
 
 4. **Standard project structure**:
    ```
@@ -86,9 +86,8 @@ mybof/
    ├── entry.c          (main BOF code - always entry.c)
    ├── beacon.h         (BOF API declarations)
    ├── Makefile         (set BOFNAME variable)
-   └── dist/            (created during compilation)
-       ├── mybof.x64.o
-       └── mybof.x86.o
+   ├── mybof.x64.o      (compiled output)
+   └── mybof.x86.o      (compiled output)
    ```
 
 Use the templates from `assets/` directory:
@@ -155,9 +154,10 @@ Copy and customize `assets/Makefile.template`:
 
 3. Adjust `COMINCLUDE` path if using a common headers directory
 
-4. **OUTPUT_DIR is preset to `dist/`** - do not change unless absolutely necessary
-   - All BOFs should compile to `dist/` for consistency
-   - Template already configured correctly
+4. **OUTPUT_DIR** - customize based on your preference (optional)
+   - Default: `.` (current directory - keeps files in project root)
+   - Optional: `dist/`, `bin/`, or any subdirectory you prefer
+   - Makefile handles moving files only if OUTPUT_DIR is not current directory
 
 Common library includes:
 - `-l iphlpapi` - Network interfaces (IP Helper API)
