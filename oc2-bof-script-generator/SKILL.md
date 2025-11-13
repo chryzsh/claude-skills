@@ -24,6 +24,11 @@ Follow this workflow when generating OC2 BOF scripts:
 **Required information:**
 - BOF project name (e.g., "cookie-monster", "SQL-BOF")
 - Location of BOF project files (GitHub URL or local path)
+- **Repository ownership**: Does the user maintain/own the BOF repository?
+
+**Ask the user:**
+- "Do you maintain the original BOF repository?"
+- This determines where the OC2 script will be saved (see Step 10)
 
 **If project is on GitHub and not local:**
 - Ask the user for the repository URL
@@ -367,25 +372,40 @@ def _encode_arguments_bof(self, arguments: List[str]) -> List[Tuple[BOFArgumentE
 
 ### Step 9: Update Documentation
 
-After generating the script, inform the user about the README file:
+**For third-party BOFs only** (saved to `python-scripts-bof/` directory):
 
-**README location:**
+Inform the user about the README file:
 ```
 ~/share/scripts/oc2-scripts/python-scripts-bof/README.md
 ```
 
 The README contains tables documenting all implemented BOF scripts. Suggest adding an entry for the newly created script.
 
+**For user-maintained BOFs** (saved to BOF project directory):
+- No centralized README to update
+- Documentation stays with the BOF project itself
+
 ### Step 10: Output Location
 
-**Save the generated script to:**
-```
-~/share/scripts/oc2-scripts/python-scripts-bof/<project-name>/<project-name>_bof.s1.py
-```
+**Location depends on repository ownership (from Step 1):**
+
+**Option A: User maintains the BOF repository**
+- Save in the BOF project directory alongside the source code
+- Example: `<bof-project-root>/<project-name>_bof.s1.py`
+- Keeps related code together for easier maintenance
+- Makes sense when you're developing both the BOF and OC2 script
+
+**Option B: User does NOT maintain the BOF repository** (third-party BOF)
+- Save in centralized OC2 scripts directory
+- Location: `~/share/scripts/oc2-scripts/python-scripts-bof/<project-name>/<project-name>_bof.s1.py`
+- Creates folder structure: `<project-name>/<project-name>_bof.s1.py`
+- Keeps all third-party OC2 scripts organized in one place
 
 **CRITICAL:** The file MUST include the `_bof` suffix before `.s1.py` or OC2 will not load it.
 
-**Do NOT save to the BOF project directory.**
+**Examples:**
+- User's BOF: `~/dev/mybof/mybof_bof.s1.py`
+- Third-party BOF: `~/share/scripts/oc2-scripts/python-scripts-bof/cookie-monster/cookie-monster_bof.s1.py`
 
 ## Reference Materials
 
