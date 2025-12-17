@@ -115,7 +115,7 @@ DECLSPEC_IMPORT BOOL WINAPI KERNEL32$Process32FirstW(HANDLE, LPPROCESSENTRY32W);
 void go(char* args, int len) {
     datap parser;
     BeaconDataParse(&parser, args, len);
-    
+
     // Parse each argument in order
     int pid = BeaconDataInt(&parser);
     char* processName = BeaconDataExtract(&parser, NULL);
@@ -128,9 +128,9 @@ void go(char* args, int len) {
         BeaconPrintf(CALLBACK_ERROR, "Failed to create snapshot: %d\n", GetLastError());
         return;
     }
-    
+
     // ... implementation ...
-    
+
     CloseHandle(hSnapshot);
 }
 ```
@@ -139,6 +139,99 @@ void go(char* args, int len) {
 ```c
 BeaconPrintf(CALLBACK_OUTPUT, "Found %d processes\n", count);
 BeaconPrintf(CALLBACK_ERROR, "Operation failed: %d\n", error);
+```
+
+### Step 4.5: Resource Management and Cleanup Pattern
+
+For functions with multiple resources (handles, memory, connections), use the **goto cleanup** pattern:
+
+**Why:** Ensures all resources are freed on every exit path, preventing leaks and handle exhaustion.
+
+**Pattern:**
+```c
+void go(char* args, int len) {
+    // Resource tracking flags
+    BOOL credHandleAcquired = FALSE;
+    BOOL contextInitialized = FALSE;
+    HANDLE hFile = NULL;
+    LPVOID buffer = NULL;
+
+    // Parse arguments
+    datap parser;
+    BeaconDataParse(&parser, args, len);
+    char* filename = BeaconDataExtract(&parser, NULL);
+
+    // Acquire resources with error handling
+    SECURITY_STATUS status = SECUR32$AcquireCredentialsHandleW(..., &hCred, ...);
+    if (status != SEC_E_OK) {
+        BeaconPrintf(CALLBACK_ERROR, "Failed: %d\n", status);
+        goto cleanup;
+    }
+    credHandleAcquired = TRUE;  // Mark for cleanup
+
+    hFile = KERNEL32$CreateFileW(filename, ...);
+    if (hFile == INVALID_HANDLE_VALUE) {
+        BeaconPrintf(CALLBACK_ERROR, "Failed to open file\n");
+        goto cleanup;
+    }
+
+    HANDLE hHeap = KERNEL32$GetProcessHeap();
+    buffer = KERNEL32$HeapAlloc(hHeap, HEAP_ZERO_MEMORY, 4096);
+    if (!buffer) {
+        BeaconPrintf(CALLBACK_ERROR, "Failed to allocate memory\n");
+        goto cleanup;
+    }
+
+    // ... use resources ...
+
+    BeaconPrintf(CALLBACK_OUTPUT, "Success!\n");
+
+    // Success path also goes to cleanup
+    goto cleanup;
+
+cleanup:
+    // Free in reverse order of acquisition
+    if (contextInitialized) {
+        SECUR32$DeleteSecurityContext(&ctx);
+    }
+    if (credHandleAcquired) {
+        SECUR32$FreeCredentialsHandle(&hCred);
+    }
+    if (buffer) {
+        KERNEL32$HeapFree(KERNEL32$GetProcessHeap(), 0, buffer);
+    }
+    if (hFile && hFile != INVALID_HANDLE_VALUE) {
+        KERNEL32$CloseHandle(hFile);
+    }
+    return;
+}
+```
+
+**When to use:**
+- Functions with 2+ resources that need cleanup
+- Multiple early-return paths
+- Complex error handling scenarios
+
+**Resource types requiring cleanup:**
+- Credential handles → `SECUR32$FreeCredentialsHandle()`
+- Security contexts → `SECUR32$DeleteSecurityContext()`
+- Context buffers → `SECUR32$FreeContextBuffer()`
+- LDAP connections → `WLDAP32$ldap_unbind_s()`
+- File handles → `KERNEL32$CloseHandle()`
+- Heap memory → `KERNEL32$HeapFree()`
+- Registry keys → `ADVAPI32$RegCloseKey()`
+
+**CRITICAL: NULL/validity checks before dereferencing:**
+```c
+// WRONG - may crash if InitializeSecurityContextW fails
+ticket = output.pBuffers;
+if (ticket->pvBuffer == NULL) { ... }
+
+// CORRECT - check pointer first
+ticket = output.pBuffers;
+if (ticket == NULL || ticket->pvBuffer == NULL) {
+    goto cleanup;
+}
 ```
 
 ### Step 5: Create Makefile

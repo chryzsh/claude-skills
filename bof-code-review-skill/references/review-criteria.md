@@ -112,6 +112,124 @@ This document contains detailed criteria for reviewing Beacon Object Files (BOFs
 - **No memory leaks**: Track all allocations and ensure cleanup.
 - **Resource cleanup**: Close all handles before returning (files, registry keys, etc.).
 
+- **Goto cleanup pattern for multi-resource functions**: Functions with 2+ resources should use goto cleanup instead of multiple early returns:
+  ```c
+  // GOOD - goto cleanup pattern
+  BOOL credHandleAcquired = FALSE;
+  HANDLE hFile = NULL;
+
+  hFile = KERNEL32$CreateFileW(...);
+  if (hFile == INVALID_HANDLE_VALUE) goto cleanup;
+
+  // ... use resources ...
+
+  cleanup:
+      if (credHandleAcquired) SECUR32$FreeCredentialsHandle(&hCred);
+      if (hFile && hFile != INVALID_HANDLE_VALUE) KERNEL32$CloseHandle(hFile);
+      return;
+
+  // BAD - early return leaks resources
+  if (error) return;  // May leak hFile if credHandleAcquired
+  ```
+
+- **Resource state tracking with flags**: Use boolean flags to track what needs cleanup:
+  ```c
+  BOOL credHandleAcquired = FALSE;
+  BOOL contextInitialized = FALSE;
+  LDAP* pLdapConnection = NULL;
+
+  // ... acquire credential ...
+  credHandleAcquired = TRUE;
+
+  // ... in cleanup section ...
+  if (contextInitialized) {
+      SECUR32$DeleteSecurityContext(&ctx);
+  }
+  if (credHandleAcquired) {
+      SECUR32$FreeCredentialsHandle(&hCred);
+  }
+  if (pLdapConnection) {
+      WLDAP32$ldap_unbind_s(pLdapConnection);
+  }
+  ```
+
+- **SSPI/Security context cleanup**: Security contexts and credentials must be freed:
+  - Credential handles → `SECUR32$FreeCredentialsHandle()`
+  - Security contexts → `SECUR32$DeleteSecurityContext()`
+  - Context buffers → `SECUR32$FreeContextBuffer(pvBuffer)`
+  ```c
+  // Required declarations
+  DECLSPEC_IMPORT SECURITY_STATUS WINAPI SECUR32$FreeCredentialsHandle(PCredHandle);
+  DECLSPEC_IMPORT SECURITY_STATUS WINAPI SECUR32$DeleteSecurityContext(PCtxtHandle);
+  DECLSPEC_IMPORT SECURITY_STATUS WINAPI SECUR32$FreeContextBuffer(PVOID);
+  ```
+
+- **LDAP connection cleanup**: LDAP handles freed on ALL exit paths:
+  ```c
+  LDAP* pLdapConnection = WLDAP32$ldap_initW(dc, 389);
+  if (!pLdapConnection) goto cleanup;
+
+  // ... use connection ...
+
+  cleanup:
+      if (pLdapConnection) {
+          WLDAP32$ldap_unbind_s(pLdapConnection);
+      }
+  ```
+
+- **NULL checks before using output buffers**: Don't assume buffers are allocated:
+  ```c
+  // WRONG - may crash if InitializeSecurityContextW fails
+  ticket = output.pBuffers;
+  if (ticket->pvBuffer == NULL) { ... }
+
+  // CORRECT - check ticket first
+  ticket = output.pBuffers;
+  if (ticket == NULL || ticket->pvBuffer == NULL) {
+      goto cleanup;
+  }
+  ```
+
+- **Loop control uses API return values**: Don't use arbitrary counters - use actual API status:
+  ```c
+  // GOOD - loop based on API return value
+  do {
+      status = SECUR32$InitializeSecurityContextW(...);
+      if (status == SEC_E_OK) {
+          // Complete
+          break;
+      } else if (status == SEC_I_CONTINUE_NEEDED) {
+          // Process server response
+      } else {
+          // Error
+          BeaconPrintf(CALLBACK_ERROR, "Failed: %d\n", status);
+          goto cleanup;
+      }
+  } while (status == SEC_I_CONTINUE_NEEDED);
+
+  // BAD - arbitrary counter
+  int count = 0;
+  do {
+      if (count > 5) break;  // Magic number!
+      count++;
+      status = SECUR32$InitializeSecurityContextW(...);
+  } while (1);
+  ```
+
+- **Format specifier type correctness**: Match format specifiers to types:
+  - `SECURITY_STATUS` / `LONG` → `%d` or `%ld`
+  - `DWORD` / `ULONG` → `%u` or `%lu`
+  - `char*` → `%s`
+  - `wchar_t*` → `%S` or `%ls`
+  ```c
+  // WRONG
+  SECURITY_STATUS status = SECUR32$InitializeSecurityContextW(...);
+  BeaconPrintf(CALLBACK_ERROR, "Failed: %S\n", status);  // %S is for wide strings!
+
+  // CORRECT
+  BeaconPrintf(CALLBACK_ERROR, "Failed: %d\n", status);
+  ```
+
 ---
 
 ## 8. String & Memory Operations

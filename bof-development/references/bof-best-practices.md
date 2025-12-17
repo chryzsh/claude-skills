@@ -68,15 +68,208 @@ DECLSPEC_IMPORT void* CDECL memcpy(void*, const void*, size_t);
 ### Memory Allocation
 ```c
 // Prefer kernel32 for memory allocation
-DECLSPEC_IMPORT LPVOID WINAPI HeapAlloc(HANDLE, DWORD, SIZE_T);
-DECLSPEC_IMPORT BOOL WINAPI HeapFree(HANDLE, DWORD, LPVOID);
-DECLSPEC_IMPORT HANDLE WINAPI GetProcessHeap();
+DECLSPEC_IMPORT LPVOID WINAPI KERNEL32$HeapAlloc(HANDLE, DWORD, SIZE_T);
+DECLSPEC_IMPORT BOOL WINAPI KERNEL32$HeapFree(HANDLE, DWORD, LPVOID);
+DECLSPEC_IMPORT HANDLE WINAPI KERNEL32$GetProcessHeap();
 
 // Example usage
-HANDLE hHeap = GetProcessHeap();
-LPVOID buffer = HeapAlloc(hHeap, HEAP_ZERO_MEMORY, size);
+HANDLE hHeap = KERNEL32$GetProcessHeap();
+LPVOID buffer = KERNEL32$HeapAlloc(hHeap, HEAP_ZERO_MEMORY, size);
 // ... use buffer ...
-HeapFree(hHeap, 0, buffer);
+KERNEL32$HeapFree(hHeap, 0, buffer);
+```
+
+### Goto Cleanup Pattern
+
+**Critical for multi-resource functions.** This pattern ensures all resources are freed on every exit path.
+
+**Basic Pattern:**
+```c
+void go(char* args, int len) {
+    // Resource tracking flags
+    BOOL resourceAcquired = FALSE;
+    HANDLE hResource = NULL;
+    LPVOID buffer = NULL;
+
+    // Acquire resources
+    hResource = SomeAPI();
+    if (!hResource) {
+        BeaconPrintf(CALLBACK_ERROR, "Failed to acquire resource\n");
+        goto cleanup;
+    }
+    resourceAcquired = TRUE;
+
+    buffer = KERNEL32$HeapAlloc(KERNEL32$GetProcessHeap(), HEAP_ZERO_MEMORY, 1024);
+    if (!buffer) {
+        BeaconPrintf(CALLBACK_ERROR, "Failed to allocate memory\n");
+        goto cleanup;
+    }
+
+    // Use resources
+    // ... implementation ...
+
+    BeaconPrintf(CALLBACK_OUTPUT, "Success\n");
+
+cleanup:
+    // Free in reverse order of acquisition
+    if (buffer) {
+        KERNEL32$HeapFree(KERNEL32$GetProcessHeap(), 0, buffer);
+    }
+    if (resourceAcquired) {
+        FreeResource(hResource);
+    }
+    return;
+}
+```
+
+**Common SSPI/Security Cleanup:**
+```c
+// Security API declarations for cleanup
+DECLSPEC_IMPORT SECURITY_STATUS WINAPI SECUR32$FreeCredentialsHandle(PCredHandle);
+DECLSPEC_IMPORT SECURITY_STATUS WINAPI SECUR32$DeleteSecurityContext(PCtxtHandle);
+DECLSPEC_IMPORT SECURITY_STATUS WINAPI SECUR32$FreeContextBuffer(PVOID);
+
+// LDAP cleanup
+DECLSPEC_IMPORT ULONG WINAPI WLDAP32$ldap_unbind_s(LDAP*);
+
+// Example with SSPI resources
+void go(char* args, int len) {
+    BOOL credHandleAcquired = FALSE;
+    BOOL contextInitialized = FALSE;
+    LDAP* pLdapConnection = NULL;
+    CredHandle hCredential;
+    CtxtHandle securityContext;
+    SecBuffer outputBuffer = {0, SECBUFFER_TOKEN, NULL};
+
+    // Acquire credential handle
+    SECURITY_STATUS status = SECUR32$AcquireCredentialsHandleW(
+        NULL, L"NTLM", SECPKG_CRED_OUTBOUND,
+        NULL, NULL, NULL, NULL,
+        &hCredential, NULL);
+    if (status != SEC_E_OK) {
+        BeaconPrintf(CALLBACK_ERROR, "AcquireCredentialsHandleW failed: %d\n", status);
+        goto cleanup;
+    }
+    credHandleAcquired = TRUE;
+
+    // Initialize LDAP connection
+    pLdapConnection = WLDAP32$ldap_initW(L"dc.example.com", 389);
+    if (!pLdapConnection) {
+        BeaconPrintf(CALLBACK_ERROR, "ldap_initW failed\n");
+        goto cleanup;
+    }
+
+    // Initialize security context
+    status = SECUR32$InitializeSecurityContextW(
+        &hCredential, NULL, L"ldap/dc.example.com",
+        ISC_REQ_ALLOCATE_MEMORY, 0, SECURITY_NATIVE_DREP,
+        NULL, 0, &securityContext, &outputBuffer, NULL, NULL);
+    if (status != SEC_E_OK && status != SEC_I_CONTINUE_NEEDED) {
+        BeaconPrintf(CALLBACK_ERROR, "InitializeSecurityContextW failed: %d\n", status);
+        goto cleanup;
+    }
+    contextInitialized = TRUE;
+
+    // ... use resources ...
+
+cleanup:
+    // Free context buffer if allocated
+    if (outputBuffer.pvBuffer) {
+        SECUR32$FreeContextBuffer(outputBuffer.pvBuffer);
+    }
+    // Delete security context
+    if (contextInitialized) {
+        SECUR32$DeleteSecurityContext(&securityContext);
+    }
+    // Free credential handle
+    if (credHandleAcquired) {
+        SECUR32$FreeCredentialsHandle(&hCredential);
+    }
+    // Unbind LDAP connection
+    if (pLdapConnection) {
+        WLDAP32$ldap_unbind_s(pLdapConnection);
+    }
+    return;
+}
+```
+
+**CRITICAL: Loop Control with API Return Values**
+
+Don't use arbitrary counters for authentication loops - use actual API return values:
+
+```c
+// WRONG - arbitrary counter
+int count = 0;
+do {
+    if (count > 5) {
+        BeaconPrintf(CALLBACK_ERROR, "Stuck in loop\n");
+        break;
+    }
+    count++;
+    status = SECUR32$InitializeSecurityContextW(...);
+} while (1);
+
+// CORRECT - use API return value
+do {
+    status = SECUR32$InitializeSecurityContextW(...);
+    if (status == SEC_E_OK) {
+        // Authentication complete
+        break;
+    } else if (status == SEC_I_CONTINUE_NEEDED) {
+        // Continue with server response
+        // ... send to server, get response ...
+    } else {
+        // Error - log and cleanup
+        BeaconPrintf(CALLBACK_ERROR, "InitializeSecurityContextW failed: %d\n", status);
+        goto cleanup;
+    }
+} while (status == SEC_I_CONTINUE_NEEDED);
+```
+
+**NULL Checks Before Dereferencing:**
+
+Always check pointers before dereferencing, especially with output buffers:
+
+```c
+// WRONG - crashes if InitializeSecurityContextW fails
+SecBufferDesc output = {SECBUFFER_VERSION, 1, &secbufPointer};
+status = SECUR32$InitializeSecurityContextW(..., &output, ...);
+PSecBuffer ticket = output.pBuffers;
+if (ticket->pvBuffer == NULL) { ... }  // May crash here
+
+// CORRECT - check pointer first
+SecBufferDesc output = {SECBUFFER_VERSION, 1, &secbufPointer};
+status = SECUR32$InitializeSecurityContextW(..., &output, ...);
+if (status != SEC_E_OK && status != SEC_I_CONTINUE_NEEDED) {
+    BeaconPrintf(CALLBACK_ERROR, "Failed: %d\n", status);
+    goto cleanup;
+}
+PSecBuffer ticket = output.pBuffers;
+if (ticket == NULL || ticket->pvBuffer == NULL) {
+    BeaconPrintf(CALLBACK_ERROR, "No output buffer allocated\n");
+    goto cleanup;
+}
+```
+
+**Format Specifier Correctness:**
+
+Match printf format specifiers to variable types:
+
+```c
+// Common types and their specifiers
+SECURITY_STATUS status;  // LONG - use %d or %ld
+DWORD value;             // unsigned long - use %u or %lu
+ULONG result;            // unsigned long - use %u or %lu
+char* str;               // narrow string - use %s
+wchar_t* wstr;           // wide string - use %S or %ls
+HANDLE handle;           // pointer - use %p
+
+// WRONG
+SECURITY_STATUS status = SECUR32$InitializeSecurityContextW(...);
+BeaconPrintf(CALLBACK_ERROR, "Failed: %S\n", status);  // %S is for wide strings!
+
+// CORRECT
+BeaconPrintf(CALLBACK_ERROR, "Failed: %d\n", status);
 ```
 
 ### Wide String Conversion
