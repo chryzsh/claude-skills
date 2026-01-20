@@ -260,27 +260,52 @@ Common library includes:
 - `-l wtsapi32` - Terminal services
 - `-l wbemuuid` - WMI (use with caution)
 
-### Step 6: Compile and Test
+### Step 6: Compile, Lint, and Test
 
 ```bash
 # Compile BOF object files
 make all
 
+# Lint compiled BOFs for common issues
+make lint
+
 # Compile as executable for local testing
 make test
 
-# Run static analysis
+# Run static analysis on source
 make check
 
 # Clean build artifacts
 make clean
 ```
 
+**Linting validates:**
+- Valid entry point (`go` or `sleep_mask` exists)
+- Supported relocation types
+- Resolvable imports (DFR format or recognized implant functions)
+- No stack-probing issues (from large stack variables)
+- No unsupported exception handling
+
+**Fix lint errors before testing.** Common issues:
+- `undefined symbol` → Missing DECLSPEC_IMPORT declaration or DFR format
+- `___chkstk_ms` → Stack variable too large, use heap allocation
+- `exception handling function` → Remove try/catch, use explicit error handling
+
 Test the BOF:
 1. Load into Cobalt Strike or compatible C2
 2. Execute with test arguments
 3. Verify output and error handling
 4. Test edge cases
+
+### Step 7: Code Review
+
+Before deploying to production, run a security-focused code review using the `bof-code-review` skill. This catches:
+- Memory safety issues (leaks, buffer overflows, NULL dereferences)
+- API usage errors
+- OPSEC concerns
+- Task appropriateness issues
+
+**Recommended workflow:** Development → Lint → Test → Code Review → Deploy
 
 ## Language Conversion Patterns
 
@@ -381,10 +406,12 @@ Contains:
 
 **Start new BOF:**
 1. Copy templates from `assets/`
-2. Customize Makefile (BOFNAME, LIBINCLUDE)
+2. Customize Makefile (BOFNAME, LIBINCLUDE, LOADER)
 3. Implement `go()` function in entry.c
 4. Run `make all` to compile
-5. Test in C2 framework
+5. Run `make lint` to validate
+6. Test in C2 framework
+7. Run `bof-code-review` skill before deployment
 
 **Convert Python/C# to BOF:**
 1. Read conversion patterns in `references/bof-best-practices.md`

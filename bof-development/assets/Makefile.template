@@ -1,5 +1,5 @@
 # BOF Makefile Template
-# 
+#
 # Standard template for compiling BOFs on Linux using mingw-w64
 # Supports both x64 and x86 architectures
 
@@ -16,7 +16,13 @@ COMINCLUDE := -I ../../common
 #   -l advapi32     (registry, security)
 #   -l userenv      (user environment)
 #   -l wtsapi32     (terminal services)
-LIBINCLUDE := 
+LIBINCLUDE :=
+
+# BOF Linter configuration
+# Path to boflint.py - adjust to your installation
+BOFLINT := boflint.py
+# Loader type: cs (Cobalt Strike), oc2 (OC2), ci (Core Impact), any (default)
+LOADER := any
 
 # Compiler definitions
 CC_x64 := x86_64-w64-mingw32-gcc
@@ -51,9 +57,26 @@ scanbuild:
 check:
 	cppcheck --enable=all $(COMINCLUDE) --platform=win64 entry.c
 
+# Lint target: validate compiled BOF with boflint
+# Run after 'make all' to check for BOF-specific issues
+lint:
+	@echo "Linting $(BOFNAME).x64.o..."
+	@python3 $(BOFLINT) $(OUTPUT_DIR)/$(BOFNAME).x64.o --loader $(LOADER) || true
+	@echo ""
+	@echo "Linting $(BOFNAME).x86.o..."
+	@python3 $(BOFLINT) $(OUTPUT_DIR)/$(BOFNAME).x86.o --loader $(LOADER) || true
+
+# Lint with verbose output (shows all sections, symbols, relocations)
+lint-verbose:
+	@echo "Linting $(BOFNAME).x64.o (verbose)..."
+	@python3 $(BOFLINT) $(OUTPUT_DIR)/$(BOFNAME).x64.o --loader $(LOADER) -v || true
+	@echo ""
+	@echo "Linting $(BOFNAME).x86.o (verbose)..."
+	@python3 $(BOFLINT) $(OUTPUT_DIR)/$(BOFNAME).x86.o --loader $(LOADER) -v || true
+
 # Clean target: remove compiled executables
 clean:
 	rm -f $(BOFNAME).*.exe
 	rm -f $(BOFNAME).*.o
 
-.PHONY: all test scanbuild check clean
+.PHONY: all test scanbuild check lint lint-verbose clean

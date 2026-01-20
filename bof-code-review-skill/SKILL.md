@@ -17,6 +17,31 @@ Create a new branch and generate initial BOF inventory:
 2. Scan repository for BOF projects (look for `entry.c` files or Makefiles with BOFNAME)
 3. Generate checklist with BOF names and descriptions from README
 
+### Step 1.5: Automated Lint Check (boflint)
+
+Before manual review, run `boflint.py` on each compiled BOF for automated validation:
+
+```bash
+# Run boflint on compiled BOF (requires .o files exist)
+python3 boflint.py mybof.x64.o --loader cs    # For Cobalt Strike
+python3 boflint.py mybof.x64.o --loader oc2   # For OC2
+python3 boflint.py mybof.x64.o --loader any   # Check all loaders
+
+# Verbose output shows all sections/symbols/relocations
+python3 boflint.py mybof.x64.o --loader cs -v
+```
+
+**boflint checks:**
+- ✅ Valid entry point (`go` or `sleep_mask`)
+- ✅ Supported relocation types for target loader
+- ✅ Resolvable imports (DFR format or recognized implant functions)
+- ✅ No stack-probing symbols (`___chkstk_ms` = stack variable too large)
+- ✅ No unsupported exception handling
+
+**Lint errors are HIGH/CRITICAL priority** - fix before proceeding with manual review.
+
+If BOFs aren't compiled yet, run `make all` in each project directory first.
+
 ### Step 2: Review Each BOF
 
 For each BOF, systematically evaluate against all criteria in `references/review-criteria.md`.
@@ -132,9 +157,9 @@ For BOF development best practices and conversion patterns, see `references/bof-
 ## Troubleshooting
 
 **Review taking too long:**
+- Run `boflint.py` first to catch obvious issues automatically
 - Focus on critical sections first (memory safety, API usage)
 - Batch similar issues together
-- Use automated tools for initial scan if available
 
 **Uncertain about severity:**
 - Default to higher severity for memory/stability issues
