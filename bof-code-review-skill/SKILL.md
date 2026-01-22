@@ -17,18 +17,26 @@ Create a new branch and generate initial BOF inventory:
 2. Scan repository for BOF projects (look for `entry.c` files or Makefiles with BOFNAME)
 3. Generate checklist with BOF names and descriptions from README
 
-### Step 1.5: Automated Lint Check (boflint)
+### Step 1.5: Automated Lint Check (boflint) - REQUIRED
 
-Before manual review, run `boflint.py` on each compiled BOF for automated validation:
+**This step is MANDATORY.** Do not skip linting and proceed directly to manual review.
+
+**boflint.py location:** `~/.claude/skills/bof-development/assets/boflint.py`
 
 ```bash
-# Run boflint on compiled BOF (requires .o files exist)
-python3 boflint.py mybof.x64.o --loader cs    # For Cobalt Strike
-python3 boflint.py mybof.x64.o --loader oc2   # For OC2
-python3 boflint.py mybof.x64.o --loader any   # Check all loaders
+# Set boflint path
+BOFLINT=~/.claude/skills/bof-development/assets/boflint.py
+
+# Compile BOFs first if needed
+make all
+
+# Run boflint on compiled BOF
+python3 $BOFLINT mybof.x64.o --loader cs    # For Cobalt Strike
+python3 $BOFLINT mybof.x64.o --loader oc2   # For OC2
+python3 $BOFLINT mybof.x64.o --loader any   # Check all loaders
 
 # Verbose output shows all sections/symbols/relocations
-python3 boflint.py mybof.x64.o --loader cs -v
+python3 $BOFLINT mybof.x64.o --loader cs -v
 ```
 
 **boflint checks:**
@@ -40,7 +48,7 @@ python3 boflint.py mybof.x64.o --loader cs -v
 
 **Lint errors are HIGH/CRITICAL priority** - fix before proceeding with manual review.
 
-If BOFs aren't compiled yet, run `make all` in each project directory first.
+**If boflint.py is not found:** Check `~/.claude/skills/bof-development/assets/` or download from https://github.com/Cobalt-Strike/bof-vs/blob/main/BOF-Template/utils/boflint.py
 
 ### Step 2: Review Each BOF
 
