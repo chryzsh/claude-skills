@@ -70,7 +70,8 @@ This document contains detailed criteria for reviewing Beacon Object Files (BOFs
 ## 6. Code Efficiency
 
 ### 🔴 CRITICAL
-- **Reasonable stack usage**: ≤1MB total, preferably ≤4KB per function to avoid crashes.
+- **Reasonable stack usage**: ≤1MB total, ≤4KB per function. Functions exceeding 4KB stack trigger `__chkstk_ms` which BOF loaders cannot resolve.
+- **No deep recursion**: Recursive functions consume stack rapidly and risk overflow. Convert to iterative algorithms using explicit stack/queue structures.
 - **Single-threaded execution**: BOFs must be single-threaded only.
 - **No long-running operations**: Avoid loops, network waits that block beacon.
 

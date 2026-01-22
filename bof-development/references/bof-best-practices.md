@@ -20,12 +20,13 @@ This reference contains best practices, common patterns, and pitfalls for develo
 - BOFs execute in-process; crashes kill the beacon
 
 ### Common Pitfalls
-1. **Stack size limitations**: BOFs have limited stack space (~1MB), large buffers cause crashes
-2. **String literals**: Use wide strings for Windows APIs that expect LPWSTR
-3. **Error handling**: Always check return values and handle errors gracefully
-4. **Memory leaks**: Clean up allocated memory before returning
-5. **API compatibility**: Not all Windows APIs work well in BOF context
-6. **Thread safety**: BOFs run in beacon's thread; avoid operations that could deadlock
+1. **Stack size limitations**: Functions with stack variables >4KB trigger `__chkstk_ms` which BOF loaders cannot resolve. Use heap allocation (`HeapAlloc`) for large buffers instead of stack arrays.
+2. **Deep recursion**: Avoid recursive functions - they consume stack rapidly. Convert recursive algorithms to iterative using explicit stack/queue data structures. See [trustedsec common utilities](https://github.com/trustedsec/CS-Situational-Awareness-BOF/tree/master/src/common) for stack/queue implementations.
+3. **String literals**: Use wide strings for Windows APIs that expect LPWSTR
+4. **Error handling**: Always check return values and handle errors gracefully
+5. **Memory leaks**: Clean up allocated memory before returning
+6. **API compatibility**: Not all Windows APIs work well in BOF context
+7. **Thread safety**: BOFs run in beacon's thread; avoid operations that could deadlock
 
 ## BOF API Functions
 
@@ -77,6 +78,48 @@ HANDLE hHeap = KERNEL32$GetProcessHeap();
 LPVOID buffer = KERNEL32$HeapAlloc(hHeap, HEAP_ZERO_MEMORY, size);
 // ... use buffer ...
 KERNEL32$HeapFree(hHeap, 0, buffer);
+```
+
+### Preprocessor Helper Macros
+
+These macros simplify common BOF patterns and reduce boilerplate:
+
+```c
+// Memory allocation shortcuts
+#define intAlloc(size) KERNEL32$HeapAlloc(KERNEL32$GetProcessHeap(), HEAP_ZERO_MEMORY, size)
+#define intRealloc(ptr, size) (ptr) ? KERNEL32$HeapReAlloc(KERNEL32$GetProcessHeap(), HEAP_ZERO_MEMORY, ptr, size) : intAlloc(size)
+#define intFree(ptr) if(ptr) { KERNEL32$HeapFree(KERNEL32$GetProcessHeap(), 0, ptr); ptr = NULL; }
+
+// COM object cleanup
+#define SAFE_RELEASE(ptr) if(ptr) { (ptr)->lpVtbl->Release(ptr); ptr = NULL; }
+
+// BSTR cleanup (for COM/WMI)
+#define SAFE_SYS_FREE(bstr) if(bstr) { OLEAUT32$SysFreeString(bstr); bstr = NULL; }
+
+// Error checking with goto
+#define CHECK_RETURN_FAIL(hr, label) if(FAILED(hr)) { BeaconPrintf(CALLBACK_ERROR, "HRESULT: 0x%08X\n", hr); goto label; }
+#define CHECK_RETURN_FAIL_BOOL(result, label) if(!(result)) { BeaconPrintf(CALLBACK_ERROR, "Error: %u\n", KERNEL32$GetLastError()); goto label; }
+```
+
+**Usage example:**
+```c
+void go(char* args, int len) {
+    LPVOID buffer = NULL;
+    IWbemLocator* pLocator = NULL;
+
+    buffer = intAlloc(4096);
+    if (!buffer) goto cleanup;
+
+    HRESULT hr = OLEAUT32$CoCreateInstance(&CLSID_WbemLocator, ...);
+    CHECK_RETURN_FAIL(hr, cleanup);
+
+    // ... use resources ...
+
+cleanup:
+    SAFE_RELEASE(pLocator);
+    intFree(buffer);
+    return;
+}
 ```
 
 ### Goto Cleanup Pattern
