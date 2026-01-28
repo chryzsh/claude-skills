@@ -1,426 +1,181 @@
 ---
 name: bof-development
-description: Develop Beacon Object Files (BOFs) for red team operations. Use when creating new BOFs from scratch, converting Python or .NET code to BOF format, generating Makefiles for BOF compilation, or debugging BOF implementations. Handles Windows API integration, memory management, and cross-architecture compilation (x86/x64).
+description: Develop Beacon Object Files (BOFs) for C2 frameworks. Use for creating new BOFs, converting Python/.NET to BOF, or debugging BOF issues.
 ---
 
 # BOF Development
 
-This skill provides guidance and resources for developing Beacon Object Files (BOFs) for Cobalt Strike and compatible C2 frameworks.
+## When to Use
 
-## When to Use This Skill
-
-Use this skill when:
 - Writing new BOFs from scratch for red team operations
-- Converting Python code to BOF format
-- Converting .NET code to BOF format
+- Converting Python/.NET code to BOF format
 - Creating Makefiles for BOF compilation
 - Troubleshooting BOF development issues
-- Implementing Windows API calls in BOF context
 
-## Core Workflow
-
-### Step 1: Understand Requirements and Feasibility
-
-Before starting BOF development, assess if the task is suitable for BOF implementation:
+## Feasibility Check
 
 **BOF-appropriate tasks:**
-- Quick enumeration operations (processes, files, registry)
+- Quick enumeration (processes, files, registry)
 - Single API calls or short sequences
-- Network reconnaissance
-- Credential access operations
-- Privilege checks
-- Small data collection tasks
+- Network reconnaissance, credential access, privilege checks
 
-**NOT suitable for BOFs:**
+**NOT suitable for BOFs (use execute-assembly or fork & run):**
 - Long-running operations (blocks beacon)
-- Complex .NET operations requiring CLR
+- Complex .NET requiring CLR
 - Large memory allocations (>1MB stack)
-- Operations with complex exception handling
-- GUI operations
-- Tasks requiring fork/spawn
+- GUI operations, complex exception handling
 
-If the task is not BOF-appropriate, recommend alternatives (execute-assembly, fork & run, standalone executable).
-
-### Step 2: Design the BOF
-
-Determine:
-1. **Input arguments**: What parameters does the BOF need?
-2. **Windows APIs required**: Which APIs accomplish the task?
-3. **Libraries to link**: What .lib files are needed? (e.g., iphlpapi, netapi32, advapi32)
-4. **Output format**: How should results be presented?
-5. **Error handling**: What failure modes need handling?
-
-### Step 3: Create Project Structure
-
-Generate a standard BOF project structure:
+## Project Structure
 
 ```
 mybof/
-├── entry.c          (main BOF code - MUST be named entry.c)
-├── beacon.h         (BOF API declarations)
-└── Makefile         (compilation rules)
+├── entry.c          # MUST be named entry.c (mandatory)
+├── beacon.h         # BOF API declarations
+└── Makefile         # Set BOFNAME to match C2 script expectations
 ```
 
-**CRITICAL NAMING CONVENTIONS:**
+Copy templates from `assets/` directory.
 
-1. **Source file naming**: The main BOF source file MUST ALWAYS be named `entry.c`
-   - This is the mandatory standard across all BOF projects
-   - The Makefile template expects `entry.c`
-   - Makes project structure consistent and predictable
-   - **NO EXCEPTIONS** - always use `entry.c`
+## Core BOF Patterns
 
-2. **Output .o file naming**: The compiled BOF files MUST match the name expected by C2 scripts
-   - **The BOFNAME in Makefile determines the output filename**
-   - Example: `BOFNAME := curl` produces `curl.x64.o` and `curl.x86.o`
-   - Example: `BOFNAME := cookie-monster-bof` produces `cookie-monster-bof.x64.o`
-   - Verify naming matches OC2/Cobalt Strike script expectations BEFORE compiling
-
-3. **Output directory**: Keep compiled BOF files in project root or subdirectory as preferred
-   - Default Makefile outputs to current directory (`.`)
-   - Adjust `OUTPUT_DIR` in Makefile if you prefer `dist/`, `bin/`, or other location
-   - Choose location that works best for your workflow
-
-4. **Standard project structure**:
-   ```
-   mybof/
-   ├── entry.c          (main BOF code - always entry.c)
-   ├── beacon.h         (BOF API declarations)
-   ├── Makefile         (set BOFNAME variable)
-   ├── mybof.x64.o      (compiled output)
-   └── mybof.x86.o      (compiled output)
-   ```
-
-Use the templates from `assets/` directory:
-- `assets/entry.c.template` - Basic BOF entry point
-- `assets/beacon.h.template` - Common BOF API declarations
-- `assets/Makefile.template` - Standard Makefile for mingw-w64
-
-### Step 4: Implement BOF Logic
-
-When writing BOF code:
-
-1. **Start with includes and declarations**
+### Entry Point and Argument Parsing
 ```c
 #include <windows.h>
-#include <tlhelp32.h>  // For process enumeration
 #include "beacon.h"
 
-// Declare Windows APIs with DECLSPEC_IMPORT
-DECLSPEC_IMPORT HANDLE WINAPI KERNEL32$CreateToolhelp32Snapshot(DWORD, DWORD);
-DECLSPEC_IMPORT BOOL WINAPI KERNEL32$Process32FirstW(HANDLE, LPPROCESSENTRY32W);
-```
-
-2. **Parse arguments in go() function**
-```c
 void go(char* args, int len) {
     datap parser;
     BeaconDataParse(&parser, args, len);
 
-    // Parse each argument in order
-    int pid = BeaconDataInt(&parser);
-    char* processName = BeaconDataExtract(&parser, NULL);
-```
+    int intArg = BeaconDataInt(&parser);
+    char* strArg = BeaconDataExtract(&parser, NULL);
+    wchar_t* wstrArg = (wchar_t*)BeaconDataExtract(&parser, NULL);
 
-3. **Implement core logic with proper error handling**
-```c
-    HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-    if (hSnapshot == INVALID_HANDLE_VALUE) {
-        BeaconPrintf(CALLBACK_ERROR, "Failed to create snapshot: %d\n", GetLastError());
-        return;
-    }
-
-    // ... implementation ...
-
-    CloseHandle(hSnapshot);
+    // Implementation...
 }
 ```
 
-4. **Use Beacon APIs for output**
+### Windows API Declarations
 ```c
-BeaconPrintf(CALLBACK_OUTPUT, "Found %d processes\n", count);
-BeaconPrintf(CALLBACK_ERROR, "Operation failed: %d\n", error);
+// DLL$FunctionName format with DECLSPEC_IMPORT
+DECLSPEC_IMPORT HANDLE WINAPI KERNEL32$CreateToolhelp32Snapshot(DWORD, DWORD);
+DECLSPEC_IMPORT BOOL WINAPI KERNEL32$Process32FirstW(HANDLE, LPPROCESSENTRY32W);
+DECLSPEC_IMPORT BOOL WINAPI KERNEL32$Process32NextW(HANDLE, LPPROCESSENTRY32W);
+DECLSPEC_IMPORT BOOL WINAPI KERNEL32$CloseHandle(HANDLE);
 ```
 
-### Step 4.5: Resource Management and Cleanup Pattern
+### Output Functions
+```c
+BeaconPrintf(CALLBACK_OUTPUT, "Result: %d\n", value);
+BeaconPrintf(CALLBACK_ERROR, "Failed: %d\n", KERNEL32$GetLastError());
+BeaconOutput(CALLBACK_OUTPUT, buffer, length);  // Raw binary
+```
 
-For functions with multiple resources (handles, memory, connections), use the **goto cleanup** pattern:
+### Memory Allocation (No malloc/free!)
+```c
+HANDLE hHeap = KERNEL32$GetProcessHeap();
+LPVOID buffer = KERNEL32$HeapAlloc(hHeap, HEAP_ZERO_MEMORY, size);
+// ... use buffer ...
+KERNEL32$HeapFree(hHeap, 0, buffer);
+```
 
-**Why:** Ensures all resources are freed on every exit path, preventing leaks and handle exhaustion.
+## Resource Management (Critical)
 
-**Pattern:**
+**For functions with 2+ resources, use the goto cleanup pattern:**
+
 ```c
 void go(char* args, int len) {
-    // Resource tracking flags
-    BOOL credHandleAcquired = FALSE;
-    BOOL contextInitialized = FALSE;
+    // Track what needs cleanup
+    BOOL credAcquired = FALSE;
     HANDLE hFile = NULL;
     LPVOID buffer = NULL;
 
-    // Parse arguments
+    // Parse args
     datap parser;
     BeaconDataParse(&parser, args, len);
-    char* filename = BeaconDataExtract(&parser, NULL);
 
-    // Acquire resources with error handling
-    SECURITY_STATUS status = SECUR32$AcquireCredentialsHandleW(..., &hCred, ...);
+    // Acquire resources - goto cleanup on failure
+    SECURITY_STATUS status = SECUR32$AcquireCredentialsHandleW(...);
     if (status != SEC_E_OK) {
-        BeaconPrintf(CALLBACK_ERROR, "Failed: %d\n", status);
+        BeaconPrintf(CALLBACK_ERROR, "AcquireCreds failed: %d\n", status);
         goto cleanup;
     }
-    credHandleAcquired = TRUE;  // Mark for cleanup
+    credAcquired = TRUE;
 
-    hFile = KERNEL32$CreateFileW(filename, ...);
-    if (hFile == INVALID_HANDLE_VALUE) {
-        BeaconPrintf(CALLBACK_ERROR, "Failed to open file\n");
-        goto cleanup;
-    }
-
-    HANDLE hHeap = KERNEL32$GetProcessHeap();
-    buffer = KERNEL32$HeapAlloc(hHeap, HEAP_ZERO_MEMORY, 4096);
+    buffer = KERNEL32$HeapAlloc(KERNEL32$GetProcessHeap(), HEAP_ZERO_MEMORY, 4096);
     if (!buffer) {
-        BeaconPrintf(CALLBACK_ERROR, "Failed to allocate memory\n");
+        BeaconPrintf(CALLBACK_ERROR, "HeapAlloc failed\n");
         goto cleanup;
     }
 
     // ... use resources ...
 
-    BeaconPrintf(CALLBACK_OUTPUT, "Success!\n");
-
-    // Success path also goes to cleanup
-    goto cleanup;
+    BeaconPrintf(CALLBACK_OUTPUT, "Success\n");
 
 cleanup:
-    // Free in reverse order of acquisition
-    if (contextInitialized) {
-        SECUR32$DeleteSecurityContext(&ctx);
-    }
-    if (credHandleAcquired) {
-        SECUR32$FreeCredentialsHandle(&hCred);
-    }
-    if (buffer) {
-        KERNEL32$HeapFree(KERNEL32$GetProcessHeap(), 0, buffer);
-    }
-    if (hFile && hFile != INVALID_HANDLE_VALUE) {
-        KERNEL32$CloseHandle(hFile);
-    }
+    // Free in REVERSE order of acquisition
+    if (buffer) KERNEL32$HeapFree(KERNEL32$GetProcessHeap(), 0, buffer);
+    if (credAcquired) SECUR32$FreeCredentialsHandle(&hCred);
     return;
 }
 ```
 
-**When to use:**
-- Functions with 2+ resources that need cleanup
-- Multiple early-return paths
-- Complex error handling scenarios
+**Common cleanup functions:**
+| Resource Type | Cleanup Function |
+|--------------|------------------|
+| Heap memory | `KERNEL32$HeapFree()` |
+| File/process handles | `KERNEL32$CloseHandle()` |
+| Registry keys | `ADVAPI32$RegCloseKey()` |
+| Credential handles | `SECUR32$FreeCredentialsHandle()` |
+| Security contexts | `SECUR32$DeleteSecurityContext()` |
+| LDAP connections | `WLDAP32$ldap_unbind_s()` |
 
-**Resource types requiring cleanup:**
-- Credential handles → `SECUR32$FreeCredentialsHandle()`
-- Security contexts → `SECUR32$DeleteSecurityContext()`
-- Context buffers → `SECUR32$FreeContextBuffer()`
-- LDAP connections → `WLDAP32$ldap_unbind_s()`
-- File handles → `KERNEL32$CloseHandle()`
-- Heap memory → `KERNEL32$HeapFree()`
-- Registry keys → `ADVAPI32$RegCloseKey()`
+See [references/code-examples.md](references/code-examples.md) for full SSPI/LDAP cleanup example.
 
-**CRITICAL: NULL/validity checks before dereferencing:**
-```c
-// WRONG - may crash if InitializeSecurityContextW fails
-ticket = output.pBuffers;
-if (ticket->pvBuffer == NULL) { ... }
+## Critical Pitfalls
 
-// CORRECT - check pointer first
-ticket = output.pBuffers;
-if (ticket == NULL || ticket->pvBuffer == NULL) {
-    goto cleanup;
-}
-```
+1. **Stack overflow**: Variables >4KB trigger `__chkstk_ms` (unresolvable). Use heap allocation.
+2. **Deep recursion**: Avoid - convert to iterative with explicit stack/queue.
+3. **NULL dereference**: Always check pointers before use, especially output buffers.
+4. **Resource leaks**: Use goto cleanup pattern for multi-resource functions.
+5. **Wrong format specifiers**: `%d` for SECURITY_STATUS, `%u` for DWORD, `%S` for wide strings.
 
-### Step 5: Create Makefile
+## Makefile Setup
 
-Copy and customize `assets/Makefile.template`:
+1. Set `BOFNAME` to match C2 script expectations (produces `name.x64.o`, `name.x86.o`)
+2. Add required libraries to `LIBINCLUDE`:
+   - `-l iphlpapi` - Network interfaces
+   - `-l netapi32` - Network management
+   - `-l advapi32` - Registry/security APIs
+   - `-l wtsapi32` - Terminal services
 
-1. **Set `BOFNAME` to match your desired output filename** (CRITICAL)
-   - Example: `BOFNAME := curl` produces `curl.x64.o` and `curl.x86.o`
-   - This name MUST match the `base_binary_name` in your OC2 Python script
-   - Choose carefully - this determines how C2 frameworks reference your BOF
-
-2. Add required libraries to `LIBINCLUDE` (e.g., `-l iphlpapi`)
-
-3. Adjust `COMINCLUDE` path if using a common headers directory
-
-4. **OUTPUT_DIR** - customize based on your preference (optional)
-   - Default: `.` (current directory - keeps files in project root)
-   - Optional: `dist/`, `bin/`, or any subdirectory you prefer
-   - Makefile handles moving files only if OUTPUT_DIR is not current directory
-
-Common library includes:
-- `-l iphlpapi` - Network interfaces (IP Helper API)
-- `-l netapi32` - Network management
-- `-l advapi32` - Registry and security APIs
-- `-l userenv` - User environment
-- `-l wtsapi32` - Terminal services
-- `-l wbemuuid` - WMI (use with caution)
-
-### Step 6: Compile, Lint, and Test
+## Build and Validate
 
 ```bash
-# Compile BOF object files
-make all
-
-# Lint compiled BOFs for common issues
-make lint
-
-# Compile as executable for local testing
-make test
-
-# Run static analysis on source
-make check
-
-# Clean build artifacts
-make clean
+make all      # Compile BOF object files
+make lint     # Validate with boflint (REQUIRED before testing)
+make test     # Compile as .exe for local debugging
+make check    # Static analysis
 ```
 
-**Linting validates:**
-- Valid entry point (`go` or `sleep_mask` exists)
-- Supported relocation types
-- Resolvable imports (DFR format or recognized implant functions)
-- No stack-probing issues (from large stack variables)
-- No unsupported exception handling
-
 **Fix lint errors before testing.** Common issues:
-- `undefined symbol` → Missing DECLSPEC_IMPORT declaration or DFR format
-- `___chkstk_ms` → Stack variable too large, use heap allocation
-- `exception handling function` → Remove try/catch, use explicit error handling
+- `undefined symbol` → Missing DECLSPEC_IMPORT or wrong DFR format
+- `___chkstk_ms` → Stack variable too large, use heap
+- `exception handling` → Remove try/catch, use explicit error handling
 
-Test the BOF:
-1. Load into Cobalt Strike or compatible C2
-2. Execute with test arguments
-3. Verify output and error handling
-4. Test edge cases
+## Workflow Summary
 
-### Step 7: Code Review
-
-Before deploying to production, run a security-focused code review using the `bof-code-review` skill. This catches:
-- Memory safety issues (leaks, buffer overflows, NULL dereferences)
-- API usage errors
-- OPSEC concerns
-- Task appropriateness issues
-
-**Recommended workflow:** Development → Lint → Test → Code Review → Deploy
-
-## Language Conversion Patterns
-
-### Converting Python to BOF
-
-**Read the reference first**: `references/bof-best-practices.md` contains detailed conversion patterns.
-
-Key steps:
-1. Identify Python standard library usage
-2. Map to equivalent Windows APIs
-3. Convert dynamic typing to static C types
-4. Replace automatic memory management with manual allocation
-5. Handle errors explicitly (no exceptions)
-
-**Common mappings:**
-- File operations → `CreateFileW()`, `ReadFile()`, `WriteFile()`
-- Directory listing → `FindFirstFileW()`, `FindNextFileW()`
-- Process operations → `CreateToolhelp32Snapshot()`, `Process32FirstW()`
-- Network operations → Winsock2 APIs
-- Registry operations → `RegOpenKeyEx()`, `RegQueryValueEx()`
-
-### Converting .NET to BOF
-
-**Read the reference first**: `references/bof-best-practices.md` contains detailed conversion patterns.
-
-Key considerations:
-1. .NET BCL methods → Win32 API equivalents
-2. Managed memory → Unmanaged memory with manual allocation
-3. CLR types → Native Windows types
-4. Some operations cannot be done in BOF (require execute-assembly)
-
-**Common mappings:**
-- `System.IO.File` → Win32 File APIs
-- `System.Diagnostics.Process` → Process enumeration APIs
-- `System.Security` → Native security APIs
-- `System.Net` → Winsock2
-- Registry classes → RegOpenKeyEx family
-
-**Limitations:**
-- Cannot load/execute .NET assemblies from BOF
-- No CLR runtime access
-- Complex .NET operations need alternative approaches
-
-## Best Practices
-
-**Always refer to**: `references/bof-best-practices.md` for comprehensive best practices.
-
-Key principles:
-1. **Memory safety**: Use heap allocation for large buffers, check bounds
-2. **Error handling**: Always check API return values
-3. **Resource cleanup**: Free memory and close handles before returning
-4. **Stack awareness**: BOFs have ~1MB stack limit
-5. **API selection**: Prefer well-tested Windows APIs
-6. **Testing**: Compile as .exe first for easier debugging
-
-## Reference Resources
-
-**Primary reference**: `references/bof-best-practices.md`
-
-Contains:
-- BOF API function reference
-- Windows API patterns for BOFs
-- Python-to-BOF conversion details
-- .NET-to-BOF conversion details
-- Common pitfalls and solutions
-- Memory management patterns
-- Links to external resources (Awesome BOF, blog posts, example repositories)
-
-**External resource hub**: [Awesome BOF Collection](https://github.com/chryzsh/awesome-bof/)
-- Extensive list of existing BOFs for reference
-- Links to BOF development guides
-- Community-contributed examples
-
-## Troubleshooting
-
-**Beacon crashes on BOF execution:**
-- Check stack usage (large local buffers)
-- Verify all pointers are valid before dereferencing
-- Ensure proper error handling on API calls
-- Look for memory leaks or double-frees
-
-**Compilation errors:**
-- Verify all required libraries in `LIBINCLUDE`
-- Check API declarations match Windows SDK
-- Ensure proper include paths in Makefile
-
-**BOF runs but produces no output:**
-- Verify `BeaconPrintf()` or `BeaconOutput()` calls
-- Check callback type (CALLBACK_OUTPUT vs CALLBACK_ERROR)
-- Ensure BOF isn't returning early due to errors
-
-**Linker errors about undefined references:**
-- Add required library to `LIBINCLUDE` in Makefile
-- Verify API is declared with `DECLSPEC_IMPORT`
-- Check library name spelling (case-sensitive)
-
-## Quick Reference
-
-**Start new BOF:**
-1. Copy templates from `assets/`
-2. Customize Makefile (BOFNAME, LIBINCLUDE, LOADER)
-3. Implement `go()` function in entry.c
-4. Run `make all` to compile
-5. Run `make lint` to validate
+1. Assess feasibility (is this BOF-appropriate?)
+2. Copy templates from `assets/`
+3. Set `BOFNAME` in Makefile
+4. Implement `go()` function with proper patterns
+5. `make all && make lint`
 6. Test in C2 framework
 7. Run `bof-code-review` skill before deployment
 
-**Convert Python/C# to BOF:**
-1. Read conversion patterns in `references/bof-best-practices.md`
-2. Map stdlib/BCL functions to Windows APIs
-3. Convert to C with manual memory management
-4. Test thoroughly
+## References
 
-**Debug compilation issues:**
-1. Run `make test` to compile as executable
-2. Run locally to test logic
-3. Use `make check` for static analysis
-4. Check `references/bof-best-practices.md` for common issues
+- [references/code-examples.md](references/code-examples.md) - Extended examples (SSPI, conversion patterns)
+- [references/bof-best-practices.md](references/bof-best-practices.md) - API reference, troubleshooting
+- [references/goto-cleanup-example.c](references/goto-cleanup-example.c) - Full cleanup pattern
+- [Awesome BOF Collection](https://github.com/chryzsh/awesome-bof/) - Community examples
