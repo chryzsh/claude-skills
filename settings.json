@@ -102,7 +102,16 @@
       "Bash(docker *)",
       "Bash(cargo *)",
       "Bash(go *)",
-      "Bash(rustc *)"
+      "Bash(rustc *)",
+      "Bash(for *)",
+      "Bash(while *)",
+      "Bash(if *)",
+      "Bash(case *)",
+      "Bash(# *)",
+      "Bash(test *)",
+      "Bash([ *)",
+      "Bash(./ *)",
+      "Bash(export *)"
     ]
   },
   "enabledPlugins": {
