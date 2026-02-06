@@ -14,6 +14,14 @@
       "Bash(sudo rmdir *)"
     ],
     "allow": [
+      "Read",
+      "Edit",
+      "Write",
+      "Glob",
+      "Grep",
+      "NotebookEdit",
+      "WebFetch",
+      "WebSearch",
       "Bash(ls *)",
       "Bash(cp *)",
       "Bash(mv *)",
