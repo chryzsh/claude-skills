@@ -129,6 +129,7 @@ cleanup:
 | Credential handles | `SECUR32$FreeCredentialsHandle()` |
 | Security contexts | `SECUR32$DeleteSecurityContext()` |
 | LDAP connections | `WLDAP32$ldap_unbind_s()` |
+| RPC/MIDL-allocated memory | `MIDL_user_free()` (NOT `MSVCRT$free`) |
 
 See [references/code-examples.md](references/code-examples.md) for full SSPI/LDAP cleanup example.
 
@@ -139,6 +140,9 @@ See [references/code-examples.md](references/code-examples.md) for full SSPI/LDA
 3. **NULL dereference**: Always check pointers before use, especially output buffers.
 4. **Resource leaks**: Use goto cleanup pattern for multi-resource functions.
 5. **Wrong format specifiers**: `%d` for SECURITY_STATUS, `%u` for DWORD, `%S` for wide strings.
+6. **Unsigned underflow in loop bounds**: `DWORD`/`ULONG` subtractions wrap to ~4 billion when subtrahend > value. Rewrite `i < val - N` as `i + N < val` (safe by construction).
+7. **RPC/MIDL memory mismatch**: Memory from RPC/IDL functions must use `MIDL_user_free`, not `MSVCRT$free`. Declare `extern void __RPC_USER MIDL_user_free(void*)`.
+8. **Sensitive data in static globals**: Wipe credential buffers and session keys with `memset(buf, 0, len)` at both entry and cleanup of `go()`, not just before free.
 
 ## Makefile Setup
 
@@ -162,16 +166,20 @@ make check    # Static analysis
 - `undefined symbol` → Missing DECLSPEC_IMPORT or wrong DFR format
 - `___chkstk_ms` → Stack variable too large, use heap
 - `exception handling` → Remove try/catch, use explicit error handling
+- `.rdata`/`.bss` section warnings → Normalize with `objcopy --rename-section` in Makefile (e.g., `.rdata=.data`, `.bss=.data`). This is build-time normalization, not a code change.
 
 ## Workflow Summary
 
 1. Assess feasibility (is this BOF-appropriate?)
 2. Copy templates from `assets/`
 3. Set `BOFNAME` in Makefile
-4. Implement `go()` function with proper patterns
-5. `make all && make lint`
-6. Test in C2 framework
-7. Run `bof-code-review` skill before deployment
+4. **Define arg contract first** -- document the argument order/types in one place and ensure all wrappers (`.cna`, `.s1.py`, `.axs`) match the C parser exactly. A mismatch silently produces wrong data.
+5. Implement `go()` function with proper patterns
+6. `make clean && make all && make lint` -- always clean build before claiming completion
+7. Test in C2 framework
+8. Run `bof-code-review` skill before deployment
+
+**Debug workflow:** Isolate diagnostic instrumentation (error codes, LDAP diagnostics, etc.) in its own commit. Revert after root cause is confirmed. Never mix debug changes with functional changes.
 
 ## References
 

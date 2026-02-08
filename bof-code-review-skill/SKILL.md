@@ -74,6 +74,16 @@ Use priority markers for all findings:
 - Specific explanation of the issue
 - Blank lines between each finding for readability
 
+### Step 3.5: Remediation Refresh (after fixes are applied)
+
+If fixes have been applied since the initial review:
+1. Re-read all modified files -- do NOT rely on the original checklist as source of truth
+2. Re-run `make clean && make` and boflint to confirm fixes compile cleanly
+3. Update checklist to reflect current state, marking resolved items and flagging any regressions
+4. Check for same-class issues that may have been missed (e.g., `BytesToHex` fixed but `HexToBinary` has the same bug)
+
+**Why:** Reviewers develop blind spots within a single pass. The same pattern can be fixed in one function and missed in another. A stale checklist documents the wrong snapshot.
+
 ### Step 4: Generate Summary Report
 
 After reviewing all BOFs, create summary including:
@@ -145,6 +155,8 @@ Create `bof_review_checklist.md` with this structure:
 - Buffer overflows in string operations
 - Memory leaks (allocated but not freed)
 - Resource leaks (handles not closed)
+- Unsigned integer underflow in loop bounds (`DWORD val - constant` wraps when `val < constant`)
+- UTF-16LE paired-byte reads that only bounds-check the first byte
 
 **API Usage:**
 - Missing DECLSPEC_IMPORT declarations
@@ -180,3 +192,9 @@ For BOF development best practices and conversion patterns, see `references/bof-
 - Check README for BOF purpose and usage
 - Look for related .cna or .py scripts for argument format
 - Review Makefile for library dependencies
+
+## Multi-Pass Review Guidance
+
+For complex BOFs (RPC, LDAP, crypto, multi-file), use at least two independent review passes. A single reviewer develops blind spots -- same-class issues get fixed in one function and missed in another. A second pass with fresh eyes catches issues the first pass normalized.
+
+When debugging LDAP/RPC failures during review, request temporary diagnostic instrumentation (error codes, `ldap_err2stringA`, search base/filter). Require that debug instrumentation be isolated in its own commit for clean revert after diagnosis.

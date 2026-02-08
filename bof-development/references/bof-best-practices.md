@@ -27,6 +27,8 @@ This reference contains best practices, common patterns, and pitfalls for develo
 5. **Memory leaks**: Clean up allocated memory before returning
 6. **API compatibility**: Not all Windows APIs work well in BOF context
 7. **Thread safety**: BOFs run in beacon's thread; avoid operations that could deadlock
+8. **Unsigned underflow in loop bounds**: `DWORD`/`ULONG` subtraction wraps to ~4 billion when subtrahend > value. Rewrite `i < val - N` as `i + N < val` (safe by construction).
+9. **RPC/MIDL memory mismatch**: Memory from RPC/IDL stubs (e.g., `IDL_DRSBind`) must use `MIDL_user_free()`, not `MSVCRT$free()`. Declare: `extern void __RPC_USER MIDL_user_free(void*);`
 
 ## BOF API Functions
 

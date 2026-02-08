@@ -101,6 +101,14 @@ This document contains detailed criteria for reviewing Beacon Object Files (BOFs
   ```
 - **No NULL pointer dereferences**: Check pointers before dereferencing.
 - **Bounds checking on all buffers**: Prevent buffer overflows.
+- **Unsigned subtraction guarded against underflow**: `DWORD`/`ULONG` subtractions in loop bounds or buffer size calculations wrap to ~4 billion when the subtrahend exceeds the value. Either guard with `if (val < constant) return` or rewrite as `i + constant < val` (safe by construction):
+  ```c
+  // WRONG - wraps to ~4B when propertyLen < 40
+  for (DWORD i = 0; i < propertyLen - 40; i++) { ... }
+
+  // CORRECT - safe by construction
+  for (DWORD i = 0; i + 40 < propertyLen; i++) { ... }
+  ```
 - **Heap allocation uses correct pattern**:
   ```c
   HANDLE hHeap = KERNEL32$GetProcessHeap();
@@ -163,6 +171,12 @@ This document contains detailed criteria for reviewing Beacon Object Files (BOFs
   DECLSPEC_IMPORT SECURITY_STATUS WINAPI SECUR32$FreeCredentialsHandle(PCredHandle);
   DECLSPEC_IMPORT SECURITY_STATUS WINAPI SECUR32$DeleteSecurityContext(PCtxtHandle);
   DECLSPEC_IMPORT SECURITY_STATUS WINAPI SECUR32$FreeContextBuffer(PVOID);
+  ```
+
+- **RPC/MIDL-allocated memory uses matching free**: Memory returned by RPC/IDL functions (e.g., `IDL_DRSBind`) must be freed with `MIDL_user_free`, not `MSVCRT$free`. While they may currently map to the same allocator, using the wrong free is fragile:
+  ```c
+  extern void __RPC_USER MIDL_user_free(void*);
+  // Use MIDL_user_free(ptr) instead of MSVCRT$free(ptr)
   ```
 
 - **LDAP connection cleanup**: LDAP handles freed on ALL exit paths:
@@ -246,6 +260,19 @@ This document contains detailed criteria for reviewing Beacon Object Files (BOFs
   ```
 - **Proper string literal handling**: Use `L"..."` for wide strings when calling LPWSTR APIs.
 - **No buffer overflows**: Check sizes before copying, use safe string functions.
+- **Output buffer functions accept size parameters**: Functions that write to caller-provided buffers (e.g., `BytesToHex`, `HexToBinary`) must take and check an output size parameter. Even if all current callers are correct, the interface is unsafe by design without it. When length is already known for allocation, prefer `memcpy` over `strcpy`.
+- **UTF-16LE paired-byte reads check both bytes**: Loops reading UTF-16LE data must bounds-check both bytes of each pair, not just the first:
+  ```c
+  // WRONG - overreads by 1 byte at boundary
+  for (int j = 0; i + j < len; j += 2) {
+      wchar_t ch = data[i + j] | (data[i + j + 1] << 8);  // data[i+j+1] may be OOB
+  }
+
+  // CORRECT - check covers both bytes
+  for (int j = 0; i + j + 1 < len; j += 2) {
+      wchar_t ch = data[i + j] | (data[i + j + 1] << 8);
+  }
+  ```
 
 ### 🟠 HIGH
 - **Wide string conversion**: Use `MultiByteToWideChar` when converting to LPWSTR.
@@ -285,6 +312,7 @@ This document contains detailed criteria for reviewing Beacon Object Files (BOFs
   ```
 - **Buffer format matches input**: Parsing order matches how arguments are packed.
 - **Arguments parsed in correct order**: Match the order from .cna or .py script.
+- **Cross-validate arg packing across ALL wrappers**: Parser order in `go()` must match every wrapper script (`.cna`, `.s1.py`, `.axs`). A mismatch silently produces wrong data. This is a mandatory verification step -- open each wrapper and confirm type/order parity with the C parser.
 
 ### 🟠 HIGH
 - **Proper handling of optional parameters**: Check parameter existence before extracting.
@@ -309,6 +337,7 @@ This document contains detailed criteria for reviewing Beacon Object Files (BOFs
 ### 🟡 MEDIUM
 - **Switch/case statements kept small**: Use if/else for large switches (>10 cases).
 - **Debug symbols stripped**: Use `--strip-unneeded` for .o files.
+- **Warning suppressions scoped narrowly**: Global `-Wno-format` or `-Wno-unused-variable` can hide real issues. Scope suppressions to specific translation units that need them (e.g., `-Wno-missing-braces` only on MIDL stubs).
 
 ---
 
@@ -351,7 +380,8 @@ This document contains detailed criteria for reviewing Beacon Object Files (BOFs
 ### 🔴 CRITICAL (all items)
 - **Input validation**: Validate all user-supplied parameters before use.
 - **No sensitive data in cleartext**: Encrypt or hash sensitive data.
-- **Proper sensitive data cleanup**: Zero memory containing passwords, keys before freeing.
+- **Proper sensitive data cleanup**: Zero memory containing passwords, keys before freeing. This includes both heap buffers (`memset` before `HeapFree`) AND static globals (wipe at both entry and cleanup of `go()`).
+- **LDAP filter input escaping**: User-supplied values interpolated into LDAP filters must be escaped per RFC 4515 (`(`, `)`, `*`, `\`, NUL). Operators may paste DNs containing these characters.
 - **Thread-safe operations**: Avoid operations that could deadlock or race.
 
 ---
