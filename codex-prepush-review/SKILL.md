@@ -1,3 +1,8 @@
+---
+name: codex-prepush-review
+description: Run OpenAI Codex locally to review changes before pushing
+---
+
 # Codex Pre-Push Review
 
 Use this skill when instructed by the user, typically when finished implementing work and ready to push.
