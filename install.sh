@@ -22,6 +22,7 @@ echo "Installing ${#SKILLS[@]} skill(s) to $SKILLS_DIR"
 for dir in "${SKILLS[@]}"; do
   name="$(basename "$dir")"
   echo "  -> $name"
+  rm -rf "$SKILLS_DIR/$name"
   cp -R "$dir" "$SKILLS_DIR/$name"
 done
 

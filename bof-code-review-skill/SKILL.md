@@ -63,15 +63,20 @@ For each BOF, systematically evaluate against all criteria in `references/review
 ### Step 3: Document Findings
 
 Use priority markers for all findings:
-- 🔴 **CRITICAL**: Security vulnerabilities, crashes, memory corruption
-- 🟠 **HIGH**: Significant code quality issues
-- 🟡 **MEDIUM**: Best practice improvements
-- 🟢 **LOW**: Minor style suggestions
+- 🔴 **CRITICAL**: Will crash the beacon, corrupt memory, or fail at load/runtime
+- 🟠 **HIGH**: Will cause incorrect behavior, data loss, or significant OPSEC risk in production
+- 🟡 **MEDIUM**: Real bug or unsafe pattern that doesn't manifest in current code but would under reasonable future changes
+- 🟢 **LOW**: Style, naming, or documentation improvement with no functional impact
 - ✅ **PASS**: Meets requirements
+
+**Severity calibration — the "would it break?" test:**
+Before assigning any severity, ask: *what actually goes wrong?* Trace the code path. If the answer is "nothing goes wrong because another function handles it" or "this is a standard pattern used across the repo," it's not a finding — it's a PASS. A finding must describe a concrete failure mode, not a hypothetical one that the code already prevents.
+
+**Zero findings is a valid outcome.** Clean code exists. Do not inflate severity or manufacture findings to fill the report. A review that reports "0 issues found" for a well-written BOF is more useful than one that scrapes up cosmetic non-issues and labels them MEDIUM. If the only findings are style preferences or "could rename this variable," either report them as LOW or drop them entirely.
 
 **Always include:**
 - File and line number references
-- Specific explanation of the issue
+- Specific explanation of the issue — what *actually goes wrong*, not what *looks inconsistent*
 - Blank lines between each finding for readability
 
 ### Step 3.5: Remediation Refresh (after fixes are applied)
@@ -129,23 +134,72 @@ For detailed review criteria, see `references/review-criteria.md`.
 
 ## Output Format
 
-Create `bof_review_checklist.md` with this structure:
+Create `bof_review_checklist.md` using a **top-down** structure: summary first, findings front-and-center, passes compressed into a table. The output serves two audiences: an LLM that will auto-fix issues (needs exact locations, clear problem statements) and a human learner (needs reasoning, not just the verdict).
+
+For the full template with examples, see `references/example-checklist.md`.
+
+### Per-BOF Review Structure (7 sections, in order)
+
+#### 1. Header
+BOF name, description, files reviewed, review status — same metadata block as today.
+
+#### 2. Executive Summary
+Moves to the top so readers immediately know the verdict.
+- Severity counts as a compact table
+- Overall assessment: one sentence
+- Recommendation: GO / FIX REQUIRED / DO NOT USE
+
+#### 3. Automated Lint Results
+boflint output per architecture (x64, x86). Keep current format — already compact.
+
+#### 4. Top Findings
+**Only actual issues.** Grouped by severity (critical → low). This is the star of the review.
 
 ```markdown
-# BOF Code Review Checklist
+### 🔴 CRITICAL (N)
 
-## BOF: [name]
-**Description**: [from README]
-**Status**: [✅ Complete / 🔄 In Progress / ⏸️ Not Started]
+**1. [Category] Short title** `entry.c:73`
 
-### Findings
-
-🔴 CRITICAL: [Issue description] (file.c:line)
-
-🟠 HIGH: [Issue description] (file.c:line)
-
-✅ PASS: [What passed] (file.c:line-range)
+Description of what's wrong and *why it matters*. Enough context that an LLM
+can locate and fix the issue, and a human reader understands the risk.
 ```
+
+Each finding has:
+- **Number within severity group** — referenceable ("Critical #3")
+- **Category tag in brackets** — which review area it came from
+- **Short title** — scannable, ~5 words describing the issue
+- **File:line as inline code** — precise location for LLM fixing
+- **Description paragraph** — explains *why*, not just *what*: the consequence (crash? leak? OPSEC risk?) and the fix direction without being prescriptive
+
+#### 5. Review Coverage
+Replaces individual PASS lines with a compact table — one row per category:
+
+```markdown
+| # | Category                     | Result     | Notes                    |
+|---|------------------------------|------------|--------------------------|
+| 1 | Project Structure & Naming   | ✅ Pass    |                          |
+| 7 | Memory Safety & Stability    | 🟡 Issues | 1 critical (Finding C1)  |
+```
+
+- **Pass** for clean categories
+- **Issues** with severity + count + cross-reference to findings for categories with problems
+- **N/A** for inapplicable categories (e.g., Conversion Quality for original BOFs)
+
+#### 6. OC2 Script Review
+Brief section for .s1.py script validation — argument order, encoding, help text. Omit if no script exists.
+
+#### 7. Detailed Category Breakdown
+Full per-category listing with all findings and passes. Same content as today but relocated to the bottom after the important stuff. Always visible (not collapsible), serves as the audit trail showing what was checked. Clearly separated with a heading so readers know this is supplementary detail.
+
+### Summary Report Structure (multi-BOF)
+
+Same top-down philosophy. Use tables instead of nested bullet lists:
+- Aggregate severity counts table (with "BOFs Affected" column)
+- Critical issues table (BOF, issue, location)
+- High issues table
+- Common patterns table (pattern, frequency, impact)
+- BOFs requiring refactoring list
+- Overall security assessment
 
 ## Common Issues to Watch For
 
@@ -182,11 +236,12 @@ For BOF development best practices and conversion patterns, see `references/bof-
 - Batch similar issues together
 
 **Uncertain about severity:**
-- Default to higher severity for memory/stability issues
-- CRITICAL: Could crash beacon or compromise security
-- HIGH: Will likely cause problems in production
-- MEDIUM: Should be fixed but not urgent
-- LOW: Nice to have improvements
+- Trace the actual code path before assigning severity — don't guess
+- CRITICAL: *Will* crash beacon, corrupt memory, or fail at runtime
+- HIGH: *Will* cause incorrect behavior or OPSEC risk in production
+- MEDIUM: Real bug that doesn't manifest now but would under reasonable changes
+- LOW: Style or documentation — no functional impact
+- If you can't articulate what *actually breaks*, downgrade or drop it
 
 **Missing context:**
 - Check README for BOF purpose and usage

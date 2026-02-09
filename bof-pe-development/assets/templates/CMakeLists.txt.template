@@ -1,0 +1,48 @@
+# BOF-PE CMakeLists.txt Template
+#
+# Copy this to your project root and customize.
+# Requires beacon/ directory with beacon.h, beacon.cpp, and its CMakeLists.txt
+
+cmake_minimum_required(VERSION 3.18)
+project(my-bof-pe)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Architecture-specific linker script (if using .discard section)
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    set(LINK_SCRIPT ${CMAKE_SOURCE_DIR}/link.ld)
+elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
+    set(LINK_SCRIPT ${CMAKE_SOURCE_DIR}/link32.ld)
+endif()
+
+include_directories(${CMAKE_SOURCE_DIR}/beacon/)
+
+# Beacon compatibility library
+add_subdirectory(beacon)
+
+# Your BOF-PE executable
+add_executable(my-bof-pe src/main.cpp)
+
+target_link_libraries(my-bof-pe beacon)
+
+# Compiler-specific settings
+if(MSVC OR (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
+    # Static CRT linkage (remove for tiny-pe)
+    set_property(TARGET my-bof-pe PROPERTY
+        MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
+    target_link_options(my-bof-pe PRIVATE
+        /SUBSYSTEM:CONSOLE
+    )
+
+    # For tiny-pe only (no CRT):
+    # target_link_options(my-bof-pe PRIVATE
+    #     /NODEFAULTLIB
+    #     /ENTRY:entry
+    #     /SUBSYSTEM:CONSOLE
+    # )
+    # target_link_libraries(my-bof-pe kernel32 user32)
+endif()
+
+install(TARGETS beacon my-bof-pe DESTINATION "")
