@@ -172,6 +172,79 @@ class SqlInfoBOF(BaseBOFTask):
 - `base_binary_name` matches individual BOF filename
 - `base_binary_path` points to subdirectory containing the BOF
 
+If your deployment process copies all `.o` files into the OC2 project root, set `base_binary_path="."` instead of preserving the source repo's subdirectory structure.
+
+## Multi-BOF Orchestration Pattern (PrivKit-Style)
+
+When a wrapper command queues several BOFs with `BaseTask.add_task_after()`, the child tasks do not automatically inherit `base_path`.
+
+Relevant runtime behavior:
+
+```python
+# outflank_stage1/task/base_task.py
+self._base_path: Optional[str] = None
+
+def add_task_after(self, task: BaseTask):
+    self._tasks_after.append(task)
+```
+
+```python
+# outflank_stage1/task/base_bof_task.py
+binary_path = os.path.join(
+    self.get_base_path(),
+    self._get_base_binary_path(arguments),
+    self._get_bof_binary_filename(implant, arguments),
+)
+```
+
+That means a run-all wrapper can fail with `TypeError: expected str, bytes or os.PathLike object, not NoneType` even when each BOF works fine on its own.
+
+Recommended pattern:
+
+```python
+import os
+from outflank_stage1.task.base_bof_task import BaseBOFTask
+from outflank_stage1.task.base_task import BaseTask
+from outflank_stage1.task.enums import BOFType
+
+_SCRIPT_BASE_PATH = os.path.dirname(os.path.abspath(__file__))
+
+
+class _ProjectBaseBOF(BaseBOFTask):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.set_base_path(_SCRIPT_BASE_PATH)
+
+
+class CheckOneBOF(_ProjectBaseBOF):
+    def __init__(self, bof_type: BOFType = BOFType.DEFAULT):
+        super().__init__(
+            "project-check-one",
+            base_binary_name="CheckOne",
+            base_binary_path=".",
+            bof_type=bof_type,
+        )
+
+
+class RunAllTask(BaseTask):
+    def run(self, arguments: List[str]):
+        for cls in (CheckOneBOF,):
+            task = cls(bof_type=BOFType.DEFAULT_NON_THREADED)
+            task.set_base_path(self.get_base_path() or _SCRIPT_BASE_PATH)
+            self.add_task_after(task)
+```
+
+Use `BOFType.DEFAULT_NON_THREADED` when queueing multiple BOFs in one wrapper if the threaded default causes agent instability.
+
+## Runtime Failure Mapping
+
+- `TypeError: expected str, bytes or os.PathLike object, not NoneType`
+  The BOF task's `base_path` is `None`. Check the wrapper task and child task initialization.
+- `The path to the BOF file does not exist`
+  `base_binary_name` or `base_binary_path` does not match the deployed `.o` file layout.
+- Individual `privkit-*` style commands work, but the aggregate command fails
+  The wrapper is not propagating `base_path`, or it is queueing the children with the wrong `BOFType`.
+
 ## Common Patterns
 
 ### Boolean Flags to Integers

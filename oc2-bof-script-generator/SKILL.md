@@ -180,6 +180,8 @@ super().__init__(
 )
 ```
 
+**Deploy layout matters more than source layout.** `base_binary_path` must match where OC2 will actually load the `.o` files from at runtime. If your sync or packaging step flattens BOFs into the script directory, use `base_binary_path="."` (or leave it empty) instead of the source repo's subdirectory name.
+
 #### 6.2 Argument Parser Configuration
 
 Add all arguments from the .cna file:
@@ -351,6 +353,60 @@ def _encode_arguments_bof(self, arguments: List[str]) -> List[Tuple[BOFArgumentE
     ]
 ```
 
+#### Multi-BOF Orchestration and Runtime Paths
+
+If you build an umbrella command that queues multiple BOFs with `BaseTask.add_task_after()`, do not assume OC2 will propagate the parent task's base path to the children.
+
+Relevant Outflank runtime behavior:
+
+```python
+# outflank_stage1/task/base_task.py
+self._base_path: Optional[str] = None
+
+def add_task_after(self, task: BaseTask):
+    self._tasks_after.append(task)
+```
+
+```python
+# outflank_stage1/task/base_bof_task.py
+binary_path = os.path.join(
+    self.get_base_path(),
+    self._get_base_binary_path(arguments),
+    self._get_bof_binary_filename(implant, arguments),
+)
+```
+
+If `self.get_base_path()` is `None`, child BOFs fail before execution with:
+
+```text
+TypeError: expected str, bytes or os.PathLike object, not NoneType
+```
+
+Use a shared script-root fallback and set it both on each BOF class and on child tasks queued from the wrapper:
+
+```python
+import os
+from outflank_stage1.task.enums import BOFType
+
+_SCRIPT_BASE_PATH = os.path.dirname(os.path.abspath(__file__))
+
+
+class _ProjectBaseBOF(BaseBOFTask):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.set_base_path(_SCRIPT_BASE_PATH)
+
+
+class RunAllTask(BaseTask):
+    def run(self, arguments: List[str]):
+        for cls in _CHECKS:
+            task = cls(bof_type=BOFType.DEFAULT_NON_THREADED)
+            task.set_base_path(self.get_base_path() or _SCRIPT_BASE_PATH)
+            self.add_task_after(task)
+```
+
+Use `BOFType.DEFAULT_NON_THREADED` for aggregate commands when several BOFs are being queued back-to-back and threaded execution is unstable on the implant.
+
 ### Step 8: Review and Test
 
 **Review checklist:**
@@ -441,7 +497,9 @@ Guide to parsing Aggressor scripts:
 3. **Missing validation:** Port all `berror()` checks from .cna
 4. **Incorrect binary name:** Verify `base_binary_name` matches actual BOF filename
 5. **Forgetting default values:** Use same defaults as .cna (often `""` or `0`)
-6. **Multi-BOF path errors:** Set `base_binary_path` for projects with subdirectories
+6. **Deploy path mismatch:** `base_binary_path` must match the deployed OC2 layout, not just the source repo layout
+7. **Queued child BOFs missing `base_path`:** `add_task_after()` does not copy `base_path`; set it explicitly on child BOFs or in a shared base class
+8. **Batch stability issues:** Prefer `BOFType.DEFAULT_NON_THREADED` for run-all wrappers if multiple BOFs are launched in sequence
 
 ## Example Commands That Should Trigger This Skill
 
