@@ -293,38 +293,76 @@ def run(self, arguments: List[str]):
 
 #### File Upload Support
 
-For BOFs that need file uploads (like enumshares with hostnames file):
+**CRITICAL: File upload commands MUST be in their own separate `.s1.py` file.**
+
+OC2 does not render the file upload GUI element when a class with `get_gui_elements()` shares a `.s1.py` file with other classes that don't have GUI elements. The file upload command must be its own class in its own `_bof.s1.py` file.
+
+**Naming convention for file upload variants:**
+- CLI command: `<project>_bof.s1.py` (e.g., `enumshares_bof.s1.py`)
+- File upload variant: `<project>_file_bof.s1.py` (e.g., `enumshares_file_bof.s1.py`)
+
+**Example: `enumshares_file_bof.s1.py`** (separate file from `enumshares_bof.s1.py`):
 
 ```python
-def validate_files(self, arguments: List[str]):
-    file = self.get_file_by_name("file_name")
-    if file is None:
-        raise TaskInvalidArgumentsException("No file uploaded")
+class EnumSharesFileBOF(BaseBOFTask):
+    """Multi-host share enumeration via uploaded hostnames file."""
 
-def get_gui_elements(self) -> Optional[Dict]:
-    return {
-        "title": "Command Title",
-        "desc": "Description",
-        "elements": [
-            {
-                "name": "file_name",
-                "type": "file",
-                "description": "File with data",
-                "placeholder": "Select file",
-            },
-        ],
-    }
+    def __init__(self):
+        super().__init__("enumshares-file", base_binary_name="enumshares")
 
-def _encode_arguments_bof(self, arguments: List[str]) -> List[Tuple[BOFArgumentEncoding, str]]:
-    file = self.get_file_by_name("file_name")
-    file_content = file.content
+        self.parser.description = (
+            "List remote shares using an uploaded hostnames file. "
+            "For single-host mode, use enumshares."
+        )
 
-    # Ensure newline at end if required
-    if not file_content.endswith(b'\n'):
-        file_content += b'\n'
+    def validate_files(self, arguments: List[str]):
+        file = self.get_file_by_name("hostnames_file")
+        if file is None:
+            raise TaskInvalidArgumentsException(
+                "No hostnames file uploaded. Please upload a file with hostnames."
+            )
 
-    return [(BOFArgumentEncoding.BUFFER, file_content)]
+    def _encode_arguments_bof(self, arguments: List[str]) -> List[Tuple[BOFArgumentEncoding, str]]:
+        file = self.get_file_by_name("hostnames_file")
+        file_content = file.content
+
+        # Ensure newline at end if required
+        if not file_content.endswith(b'\n'):
+            file_content += b'\n'
+
+        return [
+            (BOFArgumentEncoding.STR, ""),
+            (BOFArgumentEncoding.BUFFER, file_content),
+        ]
+
+    def run(self, arguments: List[str]):
+        file = self.get_file_by_name("hostnames_file")
+        uploaded_name = getattr(file, "original_name", "uploaded file")
+        self.append_response(f"Enumerating shares from {uploaded_name}...\n")
+        super().run(arguments)
+
+    def get_gui_elements(self) -> Optional[Dict]:
+        return {
+            "title": "EnumShares (File)",
+            "desc": "List remote shares using a file with hostnames.",
+            "elements": [
+                {
+                    "name": "hostnames_file",
+                    "type": "file",
+                    "description": "File with hostnames (newline-separated)",
+                    "placeholder": "Select file with hostnames",
+                },
+            ],
+        }
 ```
+
+**Key rules for file upload support:**
+1. The file upload class MUST be in its own separate `_bof.s1.py` file
+2. The file upload class gets its own OC2 command name (e.g., `enumshares-file`, `toast-custom`)
+3. Use `self.get_file_by_name("element_name")` to retrieve uploaded file content
+4. The `"name"` in `get_gui_elements()` must match the name used in `get_file_by_name()`
+5. File content is returned as `bytes` — decode to `str` if needed before encoding
+6. Use `getattr(file, "original_name", "fallback")` to get the uploaded filename for display
 
 #### Binary File Arguments
 
@@ -500,6 +538,7 @@ Guide to parsing Aggressor scripts:
 6. **Deploy path mismatch:** `base_binary_path` must match the deployed OC2 layout, not just the source repo layout
 7. **Queued child BOFs missing `base_path`:** `add_task_after()` does not copy `base_path`; set it explicitly on child BOFs or in a shared base class
 8. **Batch stability issues:** Prefer `BOFType.DEFAULT_NON_THREADED` for run-all wrappers if multiple BOFs are launched in sequence
+9. **File upload GUI not rendering:** Classes with `get_gui_elements()` MUST be in their own separate `.s1.py` file. OC2 does not render the upload GUI when the class shares a file with non-upload classes. Use `<project>_file_bof.s1.py` naming for file upload variants
 
 ## Example Commands That Should Trigger This Skill
 

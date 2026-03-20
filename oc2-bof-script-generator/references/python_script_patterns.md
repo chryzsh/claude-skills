@@ -77,7 +77,14 @@ def validate_arguments(self, arguments: List[str]):
 
 ### 6. Optional: File Upload Support
 
+**CRITICAL: File upload classes MUST be in their own separate `.s1.py` file.**
+
+OC2 will not render the file upload GUI if the class shares a file with non-upload classes.
+Use the naming convention `<project>_file_bof.s1.py` for the file upload variant.
+
 ```python
+# In its own file: project_file_bof.s1.py (NOT in the main project_bof.s1.py)
+
 def validate_files(self, arguments: List[str]):
     file = self.get_file_by_name("file_name")
     if file is None:
@@ -96,6 +103,15 @@ def get_gui_elements(self) -> Optional[Dict]:
             },
         ],
     }
+```
+
+**Accessing uploaded file content in `_encode_arguments_bof()`:**
+```python
+file = self.get_file_by_name("file_name")
+file_content = file.content  # bytes
+# Decode if you need a string:
+if isinstance(file_content, bytes):
+    file_content = file_content.decode("utf-8")
 ```
 
 ### 7. Optional: Custom Run Logic
@@ -298,3 +314,9 @@ return [
 - `cookie-monster.s1.py` ✗ (will not work)
 
 Without the `_bof` suffix, OC2 will not recognize or load the script.
+
+**File upload variants** use the `_file_bof` suffix and MUST be in a separate file:
+- `enumshares_bof.s1.py` — CLI command (single host)
+- `enumshares_file_bof.s1.py` — file upload variant (multi-host)
+- `toastnotify_bof.s1.py` — CLI commands (getaumid, sendtoast)
+- `toastnotify_custom_bof.s1.py` — file upload variant (custom XML)
