@@ -66,6 +66,22 @@ client {
 }
 ```
 
+### Pipe Name Randomness
+
+All pipe names (`pipename`, `pipename_stager`, `post-ex.pipename`) must have **at least 3 `#` characters** per template. Each `#` is replaced with a random hex value at runtime.
+
+Comma-separated pipe names define multiple templates CS picks from randomly. **Every template** in the list must independently have >= 3 `#`:
+
+```
+# BAD - second template has only 2 #
+set pipename "msrpc_####, win\\msrpc_##";
+
+# GOOD - both templates have >= 3 #
+set pipename "msrpc_####, win\\msrpc_###";
+```
+
+This is enforced by Aggressor scripts (e.g., `async-execute.cna`) at runtime, not by c2lint. The error is: `Malleable c2 profile post-ex.pipename not sufficiently random`.
+
 ### beacon_gate Syntax
 
 Group keywords are **case-sensitive** with capital first letter:
@@ -86,6 +102,14 @@ Individual APIs use PascalCase: `VirtualAlloc;`, `InternetConnectA;`, `VirtualPr
 | `process-inject {}` | `use_driploading "true"` | `allocator "VirtualAllocEx"` | `NtMapViewOfSection` (silently ignored) |
 
 c2lint warns but does not error on mismatch. Drip loading silently does nothing with the wrong allocator.
+
+### tasks_proxy_max_size vs tasks_max_size
+
+`tasks_proxy_max_size` must be **strictly less than** `tasks_max_size`. c2lint errors if they are equal.
+
+Recommended values:
+- `tasks_max_size "104857600"` (100MB)
+- `tasks_proxy_max_size "94371840"` (~90MB, within c2lint's recommended range)
 
 ### General Syntax
 
@@ -155,6 +179,8 @@ These defaults **must** be changed from stock values:
 | `https-certificate O` | `FooCorp` | Matching org |
 | `jitter` | `"0"` | `"20"` - `"50"` |
 | `data_jitter` | `"0"` | `"40"` - `"80"` |
+| `tasks_max_size` | `"2097152"` (2MB) | `"104857600"` (100MB) |
+| `tasks_proxy_max_size` | `"921600"` | `"94371840"` (~90MB, must be < tasks_max_size) |
 
 ### Memory & Injection Opsec
 
@@ -217,6 +243,54 @@ set tcp_port "...";
 # 12. process-inject {}
 # 13. post-ex {}
 ```
+
+---
+
+## DNS Over HTTPS (DoH) Configuration
+
+DNS beacons can egress via DNS-over-HTTPS instead of raw DNS queries. Configure inside `dns-beacon {}`:
+
+```
+dns-beacon {
+    set comm_mode "dns-over-https";    # enable DoH (default is "dns")
+
+    # Standard DNS beacon labels (still needed for data encoding)
+    set beacon       "d1.bc.";
+    set get_A        "d1.1a.";
+    set get_AAAA     "d1.4a.";
+    set get_TXT      "d1.tx.";
+    set put_metadata "d1.md.";
+    set put_output   "d1.po.";
+
+    dns-over-https {
+        set doh_verb       "POST";                    # GET or POST
+        set doh_server     "cloudflare-dns.com";      # DoH resolver
+        set doh_useragent  "Mozilla/5.0 (Windows NT 10.0; Win64; x64)...";
+        set doh_accept     "application/dns-message";
+        set doh_proxy_server "";                       # optional HTTP proxy
+        header "Content-Type" "application/dns-message";
+    }
+}
+```
+
+### DoH Options
+
+| Setting | Description | Common Values |
+|---|---|---|
+| `doh_server` | DoH resolver hostname | `cloudflare-dns.com`, `dns.google`, `doh.opendns.com` |
+| `doh_verb` | HTTP method | `POST` (smaller, preferred) or `GET` |
+| `doh_useragent` | UA sent to DoH resolver | Modern browser UA |
+| `doh_accept` | Accept header | `application/dns-message` |
+| `doh_proxy_server` | HTTP proxy for DoH traffic | Empty or proxy URL |
+
+### DoH Considerations
+
+- DoH wraps DNS queries in HTTPS to a public resolver, bypassing network DNS inspection
+- The beacon still encodes data in DNS labels; DoH just changes the transport
+- DNS subdomain labels (`beacon`, `get_A`, etc.) are still required and still used for data encoding
+- Cross-profile separation: vary `doh_server` and `doh_useragent` between profiles
+- `comm_mode` can be `"dns"` (default raw DNS) or `"dns-over-https"`
+- Additional `header` directives inside `dns-over-https {}` add custom HTTP headers to DoH requests
 
 ---
 
