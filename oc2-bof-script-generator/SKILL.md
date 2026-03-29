@@ -57,6 +57,32 @@ Before generating new scripts, read 2-3 existing OC2 scripts from the reference 
 - Multi-BOF vs single-BOF patterns (check SQL-BOF for multi-BOF example)
 - Recent validation patterns and conventions
 
+### Step 2.5: Check The Bundled OC2 Runtime Snapshot When Imports Or Path Logic Matter
+
+If the script uses `outflank_stage1` features and behavior is not obvious from existing BOF wrappers, consult the recovered OC2 runtime instead of guessing.
+
+Bundled runtime snapshot location:
+
+```bash
+references/runtime_snapshot/
+```
+
+Start with:
+
+```text
+references/runtime_snapshot/outflank_stage1/task/base_task.py
+references/runtime_snapshot/outflank_stage1/task/base_bof_task.py
+references/runtime_snapshot/outflank_stage1/task/enums/bof_argument_encoding.py
+references/runtime_snapshot/outflank_stage1/task/exceptions/task_invalid_arguments_exception.py
+references/runtime_snapshot/outflank_stage1/implant/enums/__init__.py
+```
+
+Use the local reference note here for a quicker index:
+
+```text
+references/runtime_modules.md
+```
+
 ### Step 3: Parse the .cna File
 
 **Locate the .cna file** in the BOF project directory.
@@ -109,6 +135,8 @@ The format string defines argument types and order. Document it as a comment in 
 - Python script will use: `base_binary_name="cookie-monster-bof"`
 
 **Cross-reference** the source code's argument parsing with the .cna file's `bof_pack()` call to ensure accuracy.
+
+When runtime file resolution is ambiguous, verify against the recovered `BaseBOFTask` implementation instead of assuming how OC2 builds the BOF path.
 
 ### Step 5: Generate Python Script Structure
 

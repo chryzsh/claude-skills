@@ -2,6 +2,26 @@
 
 This reference documents the standard structure and patterns for OC2 BOF Python scripts (`.s1.py` files).
 
+## Recovered Runtime Reference
+
+If you need the real OC2 implementation for imports, enums, path handling, or BOF argument encoding, consult:
+
+```text
+references/runtime_snapshot/outflank_stage1/
+```
+
+Most useful files:
+
+```text
+references/runtime_snapshot/outflank_stage1/task/base_task.py
+references/runtime_snapshot/outflank_stage1/task/base_bof_task.py
+references/runtime_snapshot/outflank_stage1/task/enums/bof_argument_encoding.py
+references/runtime_snapshot/outflank_stage1/task/exceptions/task_invalid_arguments_exception.py
+references/runtime_snapshot/outflank_stage1/implant/enums/__init__.py
+```
+
+Do not invent enum names or base-path behavior when these files are available locally.
+
 ## Standard Structure
 
 ### 1. Imports
@@ -13,6 +33,12 @@ from outflank_stage1.task.base_bof_task import BaseBOFTask
 from outflank_stage1.task.enums import BOFArgumentEncoding
 from outflank_stage1.task.exceptions import TaskInvalidArgumentsException
 ```
+
+Verified against the recovered runtime:
+- `BaseBOFTask` lives in `outflank_stage1/task/base_bof_task.py`
+- `BaseTask` lives in `outflank_stage1/task/base_task.py`
+- `BOFArgumentEncoding` and `BOFType` live in `outflank_stage1/task/enums/bof_argument_encoding.py`
+- `TaskInvalidArgumentsException` lives in `outflank_stage1/task/exceptions/task_invalid_arguments_exception.py`
 
 ### 2. Class Definition
 
@@ -189,6 +215,8 @@ class SqlInfoBOF(BaseBOFTask):
 - `base_binary_path` points to subdirectory containing the BOF
 
 If your deployment process copies all `.o` files into the OC2 project root, set `base_binary_path="."` instead of preserving the source repo's subdirectory structure.
+
+This matches recovered runtime behavior in `base_bof_task.py`, where OC2 resolves the BOF path by joining `base_path`, `base_binary_path`, and the architecture-specific filename.
 
 ## Multi-BOF Orchestration Pattern (PrivKit-Style)
 
