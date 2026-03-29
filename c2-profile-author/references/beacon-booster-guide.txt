@@ -1,0 +1,168 @@
+Beacon Booster
+Cobalt Strike is a framework designed to be open, flexible and modular. Instead of providing hard coded evasion techniques, it enables users to apply specific tradecraft and/or custom TTPs themselves. We understand that this can require time consuming research and development. Therefore, to support our users with modern evasion tradecraft and demonstrate what is possible with Cobalt Strike, Beacon Booster provides ready-made Cobalt Strike tools built on the same templates found in the Arsenal Kit and the Cobalt Strike Github.
+
+important
+We can only boost the Beacon you upload to CS:RL (watch this space). Therefore, commands like spawn/inject etc will use your default configuration. We recommend you download the modified .bin file (in addition to using the OST payload generator) and use shspawn/shinject etc for Post-Ex tasks/Lateral Movement. In addition, be careful when using Post-Ex commands like screenshot/portscan/hashdump etc as they will use the built-in Post-Ex Loader. We cannot "boost" the Post-Ex DLLs... yet.
+
+Quick Start Guide
+Export a RAW (Stageless) Beacon payload from Cobalt Strike.
+Upload the exported .bin file.
+Select a project.
+Select the desired "boosts".
+Click Build to "boost the Beacon".
+Download the updated .bin file and/or import it into an existing OST project.
+note
+Do not apply transformations in your malleable profile that change the structure of the RAW Beacon DLL. The profile should not modify the PE header or include the prepend or append options in the stage.transform-x86{} or stage.transform-x64{} blocks. Additionally, stage.transform-obfuscate{} should either be disabled or left in its default configuration.
+
+Support Information
+Cobalt Strike 4.12+
+Windows 8/Windows Server 2012+
+Evasion-In-Depth
+Evasion-in-depth is the idea that each stage of your offensive tradecraft is dependent upon its predecessor. For example:
+
+A Reflective Loader is only as effective as the initial Code Execution technique.
+Post Exploitation capabilities are almost completely dependent upon their injection methods/loading strategies.
+Transformations defeat static signatures but can dramatically increase the entropy of stage0 shellcode runners which can trigger AI/ML sensors.
+Publicly documented and obscure lolbins can be more suspicious than traditional techniques.
+Third-party tools/public projects can cause detections (not just Beacon).
+We strongly recommend that you consider your evasion strategy and each element of your payload’s lifecycle when creating artifacts. In addition, evasion should not be considered a binary setting, it applies to your whole execution chain throughout an engagement.
+
+Malleable C2 Profile Options
+The Malleable C2 profile was originally created to simplify the process of transforming Beacon's HTTP indicators. However, it also allows users to control Beacon’s in-memory characteristics, determine how it does Process Injection, and influence Post Exploitation jobs. For example, the stage{} block controls how Beacon is loaded into memory but can also modify the content of the RAW Beacon DLL.
+
+In light of the above, it is important to consider what transformations are applied to Beacon via the Malleable C2 profile when using Beacon Booster. For example, the stage.image_size_x** options allow users to override the image size field in Beacon's PE header. However, this will change the structure of the RAW Beacon DLL which could prevent Beacon Booster from parsing it correctly and/or impact UDRLs that use the attribute to allocate memory.
+
+In summary, the profile should not modify the PE header or include the prepend or append options in the stage.transform-x86{} or stage.transform-x64{} blocks. Additionally, stage.transform-obfuscate{} should either be disabled or left in its default configuration.
+
+Public Profile Check
+Public Profile Checker
+Public Profile Validation
+
+note
+We always recommend using custom profiles as anything that is publicly available will be heavily signatured (specifically the HTTP(S) comms).
+
+User-Defined Reflective Loaders
+Beacon is just a Dynamic Link Library (DLL). As a result, it needs to be "loaded" for us to work with it. There are many different ways to load a DLL in Windows, but Reflective DLL Injection first published by Stephen Fewer in 2008, provides the means to load a DLL completely in memory. There are different approaches to Reflective Loading, but, fundamentally a reflective loader must:
+
+Allocate some memory.
+Copy the target DLL into that memory allocation.
+Parse the target DLL's imports/load the required modules/resolve function addresses.
+Rebase the DLL (fix the relocations).
+Locate the DLL's Entry Point.
+Execute the Entry Point.
+A Reflective Loader is written in Position Independent Code (PIC) and either compiled into the target DLL or prepended in front of it to make a single payload file. It is therefore possible to utilize a UDRL to create custom loading strategies that do not rely on Beacon's default configuration and apply custom obfuscation and masking routines to evade static signatures.
+
+Beacon Booster's UDRLs
+The following sections provide information about Beacon Booster's UDRLs and their configurable options.
+
+Tower Reflective Loader
+Tower Loader is a "Double Pulsar" style Reflective Loader built on top of UDRL-VS that features indirect syscalls, a custom LoadLibrary implementation and even facilitates module stomping for Beacon memory.
+
+Tower Loader - Bypass WDEG
+Bypass Windows Defender Exploit Guard's Import Address Filtering (IAF) and Export Address Filtering (EAF).
+
+Tower Loader - Clear GuardPages
+Remove GuardPages to prevent detection during system call or LoadLibrary lookups.
+
+Tower Loader - Clear APC Dispatcher
+Prevent detection of Suspicious APCs by removing Ntdll!KiUserApcDispatcher from the callstack (Hunt-Sleeping-Beacons)
+
+Tower Loader - Register x86 Exception Handlers
+Register exception handlers for x86 using a hook on the RtlIsValidHandler function. This option is only applicable for x86.
+
+Tower Loader - Stomping
+Overwrite a specified DLL instead of allocating memory (this technique is Control Flow Guard (CFG) compatible). Please note:
+
+The provided DLL should reside in System32 for x64 or SysWOW64 for x86 on the target OS version.
+The DLL should be larger than the provided bin when Virtually mapped into memory.
+The DLL should not already be loaded. It's best to use a rarely used DLL. If the DLL is already loaded, the loader will fall back to regular allocation.
+Lucky Strike Reflective Loader
+Lucky Strike is a "Double Pulsar" style Reflective Loader built on UDRL-VS that provides x64 Call Stack Spoofing, an EAF Bypass and an Indirect LoadLibrary implementation. It also utilizes custom obfuscation and masking to push back against static signatures.
+
+Lucky Strike - Supported Operating Systems
+Lucky Strike has been tested on the following operating systems:
+
+Windows 11 (x64/x86)
+Windows 10 (x64/x86)
+Windows Server 2025 (x64/x86)
+Windows Server 2022 (x64/x86)
+Windows Server 2016 (x64/x86)
+Windows Server 2012R2 (x64/x86)
+Windows 7 x64 (x64/x86)
+Windows 7 x86 native (x86)
+Lucky Strike - Call Stack Spoofing
+Marionette - A novel x64 Call Stack Spoofing technique that makes it possible to generate completely random and authentic looking call stacks for syscalls. At runtime, the Marionette init routine will search for valid CALL instructions to ensure that the generated call stack contains legitimate RET addresses.
+
+Marionette is x64 only and relies on a mechanism introduced in Windows 10. Lucky Strike works with earlier OS versions but x64 Call Stack Spoofing will be disabled. Marionette and its random call stacks have been explicitly tested/verified on the following:
+
+Windows 11 (x64)
+Windows 10 (x64)
+Windows Server 2025 (x64)
+Windows Server 2022 (x64)
+Windows Server 2016 (x64)
+Lucky Strike - Indirect Load Library
+Reaper - A novel technique that removes unbacked calls to LoadLibrary() on both x64/86.
+
+Sleepmasks
+At runtime, the in-memory footprint of Beacon, its configuration and its Heap records are highly susceptible to static signatures. It is therefore essential to apply runtime masking. At a high-level, the Sleepmask is a Beacon Object File (BOF) that is loaded into memory and called each time Beacon needs to "Sleep". The Sleepmask is responsible for masking Beacon and its associated memory and "Sleeping" for the specified sleep time.
+
+The above approach ensures that Beacon is only visible in memory for an extremely short window and provides a robust defence against in-memory signatures. The Sleepmask is now enabled by default (CS 4.11), and uses a novel technique developed internally. In our testing, we have found it to be highly effective. However, we have some alternative options in Beacon Booster and this list will grow over time.
+
+Available Sleepmasks
+The following Sleepmasks are available in Beacon Booster:
+
+Beacon Default Sleepmask (x64/x86): Encrypts Beacon, its configuration, its Heap records and the Sleepmask itself using a novel technique called Reaper.
+Ace Sleep (x64/x86): Encrypts Beacon, its configuration, its Heap records and the Sleepmask itself using TitanLdr’s Foliage. Ace Sleep also applies x64 Return Address Spoofing.
+Enclave Sleep (x64 only): Encrypts Beacon, its configuration, its Heap records and the Sleepmask itself using TitanLdr’s Foliage. Additionally, Enclave sleep also seals Beacon's code in a VBS enclave and applies x64 Return Address Spoofing.
+Timer Sleep (x64 only): The Arsenal Kit's "Evasive Sleep". Encrypts Beacon, its configuration, its Heap records and the Sleepmask itself using Timer Queues. Based on Ekko.
+Bonus Boosts
+To provide some additional Beacon Boosts we also have the following options:
+
+Apply YARA Bypasses
+One of the quick wins for defenders when attempting to obtain detection coverage for a given malware family is YARA rules. Once a sample is obtained, signatures can be quickly generated and then deployed at scale. Detecting Cobalt Strike with Memory Signatures is an excellent blog by Elastic about their YARA methodology.
+
+Typically, YARA rules/signatures are made up of either strings found in the target binary or static bytes identified from reverse engineering specific functionality (e.g. XOR/encryption routines etc.). These rules can be as simple as finding some arbitrary byte sequence that appears to be consistent between versions and, when run against Virus Total (e.g. via VTGrep: content:{4D 5a etc..}), reliably identifies the target family. If this never changes between versions (unbeknownst to the operator), then it can provide a high-fidelity detection signature.
+
+This process becomes even more powerful when used in conjunction with in-memory scanning. Unless an implant takes evasive action, it is a sitting duck in memory (i.e. its .text/.data/.rdata sections are plainly visible) and good YARA signatures will quickly identify it.
+
+To provide an extra boost for your Beacon, the "Apply YARA Bypasses" option scans the uploaded Beacon payload against a list of publicly known YARA rulesets and modifies it to break any identified signatures.
+
+warning
+There are a large number of publicly known YARA signatures for Cobalt Strike and probably an even greater number kept private. In addition, Beacon will allocate memory at runtime that may also be used for YARA signatures. A more robust solution to this problem is to use a layered approach and apply masking prior to loading Beacon into memory (UDRLs), at runtime (Sleepmask) and when performing high-impact actions (BeaconGate) that may cause an EDR product to scan a suspicious memory region.
+
+YARA Rulesets
+We scan the uploaded Beacon with the following rulesets:
+
+Elastic Protection Artifacts
+Google / Chronicle: GCTI rules
+Felix Bilstein (2020)
+Felix Bilstein (latest/2023): ZIP
+yara@s3c.za.net
+Etienne Maynier / Te-k
+Avast
+JPCERT/CC
+threatintel@volexity.com
+Airbnb
+Update Beacon Config
+Beacon's runtime configuration defines what TTPs it uses in specific situations. Beacon Booster can therefore check the configuration and apply updates to remove detection risks. For example, we can check which syscall_method and beacon_gate options have been selected and update them accordingly.
+
+Note: This checks Beacon's runtime configuration which includes its Process Injection settings. However, it does not influence how Post-Ex DLLs are loaded into memory.
+
+This option can currently:
+
+Enable the Sleepmask
+Enable cleanup
+Enable Indirect Syscalls
+Update BeaconGate to mask Comms only
+Enable Drip Loading
+Update initial permissions for BOFs to RW
+Update runtime permissions for BOFs to RX/RW
+Increase minimum allocation for BOF memory to 16kb to avoid re-allocations
+Change x64 spawnto from the default (rundll32.exe) to dllhost.exe
+Change x86 spawnto from the default (rundll32.exe) to dllhost.exe
+Demo
+Yara Bypasses and Beacon Config updates
+Yara Bypasses and Beacon Config updates
+
+Edit this page
+

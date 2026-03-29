@@ -14,15 +14,24 @@ description: Author, review, or modify Cobalt Strike 4.12+ malleable C2 profiles
 
 No argument? Ask what the user needs.
 
+## Upstream Reference Profile
+
+The official CS reference profile (updated each release) lives at:
+https://github.com/Cobalt-Strike/Malleable-C2-Profiles/blob/master/normal/reference.profile
+
+**Freshness check**: Before creating or reviewing profiles, verify the local copy at `references/profiles/reference.412.profile` is current. If working with a new CS version, fetch the latest upstream reference and diff against the local copy for new options or changed defaults.
+
 ## Workflow
 
 ### Create
 
-1. Read [references/c2-profile-constraints.md](references/c2-profile-constraints.md) for hard constraints and opsec baseline
-2. Read [references/traffic-themes.md](references/traffic-themes.md) for theme patterns
-3. If other profiles exist in the project, read them and consult [references/cross-profile-separation.md](references/cross-profile-separation.md)
-4. Write the profile following block order, constraints, and Beacon Booster checklist
-5. Self-review against the checklist below before delivering
+1. **Check reference freshness** - Compare local reference profile against upstream if CS version has changed
+2. Read [references/c2-profile-constraints.md](references/c2-profile-constraints.md) for hard constraints and opsec baseline
+3. Read [references/traffic-themes.md](references/traffic-themes.md) for theme patterns
+4. Read example profiles in [references/profiles/](references/profiles/) to match quality and structure
+5. If other profiles exist in the project, read them and consult [references/cross-profile-separation.md](references/cross-profile-separation.md)
+6. Write the profile following block order, constraints, and Beacon Booster checklist
+7. Self-review against the checklist below before delivering
 
 ### Review
 
@@ -116,6 +125,14 @@ tasks_proxy_max_size "94371840"   # ~90MB - MUST be < tasks_max_size
 
 ## Reference Files
 
-- [references/c2-profile-constraints.md](references/c2-profile-constraints.md) - All c2lint rules, Beacon Booster checklist, opsec baseline, strrep lengths, allocator compatibility
+- [references/c2-profile-constraints.md](references/c2-profile-constraints.md) - All c2lint rules, Beacon Booster checklist, opsec baseline, strrep lengths, allocator compatibility, DoH config
 - [references/cross-profile-separation.md](references/cross-profile-separation.md) - Multi-actor separation rules and differentiation checklist table
 - [references/traffic-themes.md](references/traffic-themes.md) - Theme selection, anatomy of a convincing theme, examples for Exchange/OneDrive/GA/Cloudflare
+- [references/beacon-booster-guide.txt](references/beacon-booster-guide.txt) - Full Beacon Booster documentation (UDRLs, sleepmasks, YARA bypasses, Update Config)
+- [references/profiles/](references/profiles/) - Production profiles and upstream reference:
+  - `reference.412.profile` - Official CS 4.12 reference (upstream baseline)
+  - `reference_mod_412.profile` - Hardened Azure/API theme (aco-a scenario)
+  - `ganalytics_412.profile` - Google Analytics theme
+  - `cloudflare_412.profile` - Cloudflare CDN/API theme
+  - `m365_exchange_412.profile` - Exchange Online/Outlook theme (fenix-a)
+  - `onedrive_sync_412.profile` - OneDrive/SharePoint sync theme (fenix-b)
