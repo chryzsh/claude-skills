@@ -260,6 +260,20 @@ set tcp_port "...";
 
 ---
 
+## Beacon Booster Enclave Sleep Compatibility
+
+Enclave Sleep seals beacon code in a VBS enclave (VTL1). Known constraints:
+
+- **x64 only** - no x86 support
+- **Windows 11 Build 26100.2314+** or **Windows Server 2025+** required, VBS/HVCI must be enabled
+- **Module stomping incompatible** - do not set `module_x64`/`module_x86`
+- **ACG enforced inside enclave** - `VirtualAlloc` with `PAGE_EXECUTE_*` fails inside the enclave; the enclave has its own loader
+- **`stage.userwx` sensitivity** - When `userwx "false"`, `.text` gets RX protection. The sleep mask must `VirtualProtect` before masking. If the UDRL's actual memory protections don't match what the sleep mask expects, it crashes (`0xc0000005` access violation in unknown module)
+- **UDRL must populate `ALLOCATED_MEMORY` structure** (CS 4.10+ BUD) to communicate memory layout to the sleep mask
+- **If crashes occur**: try `stage.userwx "true"` first to rule out memory protection mismatch, then isolate other settings (drip loading, allocator)
+
+---
+
 ## DNS Over HTTPS (DoH) Configuration
 
 DNS beacons can egress via DNS-over-HTTPS instead of raw DNS queries. Configure inside `dns-beacon {}`:

@@ -222,7 +222,7 @@ stage {
     set syscall_method "Indirect";
 
     beacon_gate {
-      All;
+      Comms;
     }
 
     set smartinject "false";

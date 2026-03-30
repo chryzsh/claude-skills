@@ -242,9 +242,12 @@ stage {
 
     # See: https://hstechdocs.helpsystems.com/manuals/cobaltstrike/current/userguide/content/topics/beacon-gate.htm
     # beacon_gate ignored when sleep_mask is set to false
-    # Beacon Booster recommends COMMS at minimum
+    # Comms only: masks HTTP APIs via obfuscated calls.
+    # Core APIs use syscall_method "Indirect" instead to bypass EDR hooks.
+    # beacon_gate All would override indirect syscalls with obfuscated calls for Core APIs,
+    # which gets caught by CrowdStrike/S1 hooks.
     beacon_gate {
-      All;
+      Comms;
     }
 
     # Use embedded function pointer hints to bootstrap Beacon agent without
