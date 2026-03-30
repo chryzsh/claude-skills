@@ -164,7 +164,21 @@ set spawnto_x86 "%windir%\\syswow64\\dllhost.exe";    # anything except rundll32
 
 ## Opsec Baseline
 
-These defaults **must** be changed from stock values:
+### CRITICAL: All HTTP indicators must be customized
+
+BeaconBooster (and defenders) fingerprint profiles against the public reference profile. If ANY HTTP-level indicators match the stock profile, the profile is flagged as "public profile detected". This includes:
+- URIs (`/api/v1/Updates`, `/api/v1/Telemetry/Id/`, `/api/v1/GetLicence`)
+- Server header (`Apache`)
+- Cookie prefix (`SESSION=`)
+- Response headers (`Content-Encoding: gzip` with GZIP magic bytes)
+- Accept-Encoding values
+- Stager parameters (`uuid=96c5f1e1-...`)
+- `http-host-profiles` with `ytrewq.com` placeholder domains
+- Keep-Alive header (`timeout=5, max=100`)
+
+**Every single HTTP block must be re-themed.** Changing only the UA or stage settings is not enough.
+
+### Other defaults that **must** be changed from stock values:
 
 | Setting | Default (bad) | Recommended |
 |---|---|---|
