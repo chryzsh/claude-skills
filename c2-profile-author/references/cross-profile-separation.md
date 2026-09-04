@@ -69,7 +69,7 @@ obfuscate "true"
 sleep_mask "true"
 cleanup "true"
 stomppe "true"
-beacon_gate { All; }
+beacon_gate { Comms; }
 syscall_method "Indirect"
 bof_reuse_memory "true"
 ```

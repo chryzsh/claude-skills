@@ -6,6 +6,7 @@
 - [Opsec Baseline](#opsec-baseline)
 - [Profile Block Order & Syntax](#profile-block-order--syntax)
 - [CS 4.12 Features](#cs-412-features)
+- [CS 4.13 Removed Options](#cs-413-removed-options)
 - [Complete strrep Length Reference](#complete-strrep-length-reference)
 
 ---
@@ -342,6 +343,9 @@ These `stage {}` options were removed in CS 4.13. They cause `Error: invalid opt
 
 - `stage.rdll_loader` - removed; `PrependLoader` is now the only reflective loader and is implicit
 - `stage.smartinject` - removed; smart inject behavior is now baseline
+- `stage.name` - removed; Beacon's exported DLL name can no longer be set in the stage block
+
+`post-ex.smartinject` remains valid in CS 4.13; do not remove it when migrating a profile.
 
 Upstream reference profile (updated per release):
 https://github.com/Cobalt-Strike/Malleable-C2-Profiles/blob/master/normal/reference.profile

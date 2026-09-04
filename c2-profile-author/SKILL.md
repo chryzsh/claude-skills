@@ -34,7 +34,7 @@ When upgrading CS:
 
 Known removals:
 
-- **CS 4.13**: `stage.rdll_loader` and `stage.smartinject` were removed. `PrependLoader` is now the only reflective loader and is implicit; smart inject is baseline behavior.
+- **CS 4.13**: `stage.rdll_loader`, `stage.smartinject`, and `stage.name` were removed. `PrependLoader` is now the only reflective loader and is implicit; smart inject is baseline behavior. `post-ex.smartinject` remains valid.
 
 ## Workflow
 
@@ -153,8 +153,14 @@ tasks_proxy_max_size "94371840"   # ~90MB - MUST be < tasks_max_size
 - [references/beacon-booster-guide.txt](references/beacon-booster-guide.txt) - Full Beacon Booster documentation (UDRLs, sleepmasks, YARA bypasses, Update Config)
 - [references/profiles/](references/profiles/) - Production profiles and upstream reference:
   - `reference.412.profile` - Official CS 4.12 reference (upstream baseline)
+  - `reference.413.profile` - Official CS 4.13 reference (current upstream baseline)
   - `reference_mod_412.profile` - Hardened Azure/API theme (aco-a scenario)
+  - `reference_mod_413.profile` - CS 4.13-compatible hardened Azure/API theme
   - `ganalytics_412.profile` - Google Analytics theme
+  - `ganalytics_413.profile` - CS 4.13-compatible Google Analytics theme
   - `cloudflare_412.profile` - Cloudflare CDN/API theme
+  - `cloudflare_413.profile` - CS 4.13-compatible Cloudflare CDN/API theme
   - `m365_exchange_412.profile` - Exchange Online/Outlook theme (fenix-a)
+  - `m365_exchange_413.profile` - CS 4.13-compatible Exchange Online/Outlook theme
   - `onedrive_sync_412.profile` - OneDrive/SharePoint sync theme (fenix-b)
+  - `onedrive_sync_413.profile` - CS 4.13-compatible OneDrive/SharePoint sync theme
