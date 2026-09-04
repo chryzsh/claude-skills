@@ -19,7 +19,22 @@ No argument? Ask what the user needs.
 The official CS reference profile (updated each release) lives at:
 https://github.com/Cobalt-Strike/Malleable-C2-Profiles/blob/master/normal/reference.profile
 
-**Freshness check**: Before creating or reviewing profiles, verify the local copy at `references/profiles/reference.412.profile` is current. If working with a new CS version, fetch the latest upstream reference and diff against the local copy for new options or changed defaults.
+**Freshness check**: Before creating or reviewing profiles, verify that the local reference in `references/profiles/` matches the target CS version. When upgrading CS, fetch the latest upstream reference and diff it against the previous local reference for new, renamed, or removed options and changed defaults.
+
+## Profiles Are Version-Sensitive
+
+Malleable C2 grammar and defaults change between Cobalt Strike releases. Removed options cause a hard c2lint error such as `Error: invalid option for <.stage>`; they are not silently ignored.
+
+When upgrading CS:
+
+1. Fetch the latest upstream reference profile.
+2. Diff it against the previous local reference in `references/profiles/`.
+3. Look for lines marked `# Removed in X.Y`; these options break older profiles on the new release.
+4. Record removed or renamed options in [references/c2-profile-constraints.md](references/c2-profile-constraints.md) under a release-specific section.
+
+Known removals:
+
+- **CS 4.13**: `stage.rdll_loader` and `stage.smartinject` were removed. `PrependLoader` is now the only reflective loader and is implicit; smart inject is baseline behavior.
 
 ## Workflow
 

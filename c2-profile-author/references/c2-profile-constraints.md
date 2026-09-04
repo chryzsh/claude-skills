@@ -330,9 +330,21 @@ New/changed in 4.12 vs 4.11:
 - `process-inject.use_driploading` - drip loading for process injection
 - `process-inject.dripload_delay` - delay for injection drip loading (ms)
 - `stage.copy_pe_header` - changed default behavior
-- `stage.rdll_loader` - `StompLoader` no longer supported, `PrependLoader` only
+- `stage.rdll_loader` - `StompLoader` no longer supported, `PrependLoader` only (removed entirely in 4.13)
 - `stage.transform-obfuscate` - rc4 key length max corrected to 128
 - `stage.stringw` - uncommented by default in reference
+
+---
+
+## CS 4.13 Removed Options
+
+These `stage {}` options were removed in CS 4.13. They cause `Error: invalid option for <.stage>` in c2lint. Delete them, or comment them out, when upgrading a 4.12 profile:
+
+- `stage.rdll_loader` - removed; `PrependLoader` is now the only reflective loader and is implicit
+- `stage.smartinject` - removed; smart inject behavior is now baseline
+
+Upstream reference profile (updated per release):
+https://github.com/Cobalt-Strike/Malleable-C2-Profiles/blob/master/normal/reference.profile
 
 ---
 
