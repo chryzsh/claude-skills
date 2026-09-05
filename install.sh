@@ -5,6 +5,8 @@ REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 SKILLS_DIR="$HOME/.claude/skills"
 SETTINGS_DST="$HOME/.claude/settings.json"
 
+git -C "$REPO_DIR" submodule update --init --recursive
+
 # Skills to install (directories containing a SKILL.md)
 SKILLS=()
 for dir in "$REPO_DIR"/*/; do

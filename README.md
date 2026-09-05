@@ -20,6 +20,7 @@ This copies all skills to `~/.claude/skills/` and installs `settings.json` to `~
 | `bof-code-review-skill` | Code review for BOF projects |
 | `oc2-bof-script-generator` | Convert Cobalt Strike .cna scripts to OC2 Python format |
 | `codex-prepush-review` | Pre-push code review using Codex CLI as a review partner |
+| `sccm-hacking` | Expert on the Misconfiguration Manager project and SCCM/ConfigMgr offensive security (submodule, see [chryzsh/sccm-hacking-skill](https://github.com/chryzsh/sccm-hacking-skill)) |
 
 ## Settings
 
