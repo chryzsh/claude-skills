@@ -95,17 +95,32 @@ Group keywords are **case-sensitive** with capital first letter:
 
 Individual APIs use PascalCase: `VirtualAlloc;`, `InternetConnectA;`, `VirtualProtect;`
 
-### beacon_gate Group Selection by Target EDR
+### beacon_gate Group Selection — always Comms + Indirect
 
-The group choice is a real opsec tradeoff, not a fixed prescription. Pick by target EDR:
+**Always use `beacon_gate { Comms; }` combined with `set syscall_method "Indirect";`.** Confirmed by Dima Kortelenko (Outflank, Beacon Booster author) in the Beacon Booster Slack.
 
-| Target EDR | Recommended | Why |
-|---|---|---|
-| **MDE / Defender for Endpoint** (default) | `beacon_gate { All; }` | Booster's MDE hardening scanner flags anything less than All and auto-upgrades the config. MDE is the most common target in our engagements — this is the default unless you know otherwise. |
-| CrowdStrike Falcon, SentinelOne | `beacon_gate { Comms; }` | Falcon/S1 hook obfuscated calls. `All` routes Core APIs (VirtualAlloc, VirtualProtect, ...) through those hooked paths and gets caught. `Comms` only masks HTTP APIs; Core APIs then fall through to `syscall_method "Indirect"` and bypass userland hooks. |
-| Mixed or unknown target | `beacon_gate { Comms; }` | Safer failure mode — syscall path is broadly effective; obfuscated-call path is EDR-specific. |
+```
+stage {
+    set syscall_method "Indirect";
+    beacon_gate {
+        Comms;
+    }
+}
+```
 
-`syscall_method "Indirect"` must always be set regardless of `beacon_gate` group — it's what Core APIs fall through to when `beacon_gate` doesn't cover them.
+**Why this is optimal:**
+
+- `beacon_gate` proxies APIs through *obfuscated calls* (Sleepmask-forwarded), not syscalls.
+- `Comms` covers `InternetOpenA` / `InternetConnectA` — the HTTP APIs. Masking these hides Beacon's C2 network traffic setup.
+- Everything else — the Core APIs like `VirtualAlloc`, `VirtualProtect`, `WriteProcessMemory`, `CreateThread` — falls through to `syscall_method "Indirect"` and executes as indirect syscalls, bypassing EDR userland hooks.
+
+**Why `All` is worse:**
+
+- `All` = `Comms + Core + Cleanup`. Routing `Core` through the obfuscated-call path *overrides* the indirect syscall path for those APIs.
+- Obfuscated calls get caught by CrowdStrike Falcon and SentinelOne hooks.
+- Booster's BeaconConfigCheck panel row "BeaconGate masks Comms APIs" (red-before / green-after) means Booster is **rolling `All` back to `Comms`** — do not misread this as "should be All."
+
+**Never use `beacon_gate { All; }`** unless you have a specific reason to override the syscall path (rare). Never target MDE or CS/S1 specifically with `All` — Comms + Indirect works better against both.
 
 ### Allocator + Drip Loading
 
@@ -159,7 +174,7 @@ set sleep_mask "true";
 set cleanup "true";
 set syscall_method "Indirect";
 set rdll_use_driploading "true";
-beacon_gate { All; }           # at minimum Comms
+beacon_gate { Comms; }         # Comms + syscall_method "Indirect" is optimal — never All
 
 # process-inject {}
 set use_driploading "true";

@@ -52,7 +52,7 @@ set stomppe              "true";
 set userwx               "false";
 
 beacon_gate {
-  All;                              # MDE default; flip to Comms only for CS/S1
+  Comms;                            # Comms + syscall_method "Indirect" is optimal (never All)
 }
 ```
 

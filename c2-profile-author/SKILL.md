@@ -1,6 +1,6 @@
 ---
 name: c2-profile-author
-description: Author, review, or modify Cobalt Strike 4.13 malleable C2 profiles with Beacon Booster compatibility, opsec hardening, and cross-profile separation for multi-actor simulation. Sub-profiles inherit a shared hardening baseline (reference_mod_413.profile) and differ only in theme/separation. Use when (1) creating new C2 profiles, (2) auditing/reviewing existing profiles for c2lint errors or opsec gaps, (3) theming profiles to mimic specific cloud/SaaS traffic, (4) comparing profiles for cross-attribution risk, or (5) fixing c2lint validation failures.
+description: Author, review, or modify Cobalt Strike 4.13 malleable C2 profiles with Beacon Booster compatibility, opsec hardening, and cross-profile separation for multi-actor simulation. Sub-profiles inherit a shared hardening baseline (~/opt/c2/redteam-infra/profiles/reference_mod_413.profile) and differ only in theme/separation. Use when (1) creating new C2 profiles, (2) auditing/reviewing existing profiles for c2lint errors or opsec gaps, (3) theming profiles to mimic specific cloud/SaaS traffic, (4) comparing profiles for cross-attribution risk, or (5) fixing c2lint validation failures.
 ---
 
 # CS 4.13 Malleable C2 Profile Author
@@ -68,7 +68,7 @@ Known removals:
 1. **strrep too long** - `"beacon.dll"` is 10 chars. Always count before writing.
 2. **Pipe names < 3 hashes** - Every pipe template (pipename, pipename_stager, post-ex.pipename) needs >= 3 `#`. Check each comma-separated entry independently.
 3. **`parameter` as output terminator** - Never use `parameter` inside `output {}` in http-post. Use `uri-append`, `print`, or `header`.
-4. **`ALL` instead of `All`** in beacon_gate - case-sensitive, capital first letter only.
+4. **`beacon_gate { All; }`** — semantically wrong (not just a typo). Use `beacon_gate { Comms; }` + `syscall_method "Indirect"`. All group keywords are also case-sensitive PascalCase (`Comms`, not `COMMS`).
 5. **Stager URI + params >= 80 bytes** - Total line length, not just the URI path.
 6. **Wrong allocator for drip loading** - `VirtualAlloc` (stage) and `VirtualAllocEx` (inject) required. `MapViewOfFile`/`NtMapViewOfSection` silently ignore drip loading.
 7. **`tasks_proxy_max_size` >= `tasks_max_size`** - Proxy max must be strictly less. Use 104857600 / 94371840.
@@ -98,22 +98,25 @@ post-ex {}
 sleep_mask "true", cleanup "true", syscall_method "Indirect"
 allocator "VirtualAlloc"   # required for drip loading
 rdll_use_driploading "true"
-beacon_gate { All; }       # baseline - MDE default; flip to Comms for CS/S1
+beacon_gate { Comms; }     # baseline - optimal combo with syscall_method Indirect
 # No transform-obfuscate, no prepend/append in stage transforms
 
-# beacon_gate — pick by target EDR:
+# beacon_gate — always Comms + syscall_method "Indirect" (confirmed by
+# Dima/Outflank in the Beacon Booster Slack):
 #
-# Baseline: beacon_gate { All; }
-#   MDE / Defender for Endpoint is the most common target in our engagements.
-#   Booster's MDE hardening scanner flags anything less than All as a red mark
-#   and auto-upgrades the config. Every profile in the set (reference_mod_413
-#   and its sub-profiles) ships with All for this reason.
+#   beacon_gate { Comms; } + set syscall_method "Indirect";
 #
-# Fallback: beacon_gate { Comms; }
-#   CrowdStrike Falcon and SentinelOne hook obfuscated calls. All would route
-#   Core APIs (VirtualAlloc, VirtualProtect, ...) through those hooked paths.
-#   With Comms only, Core APIs fall through to syscall_method "Indirect" and
-#   bypass userland hooks. Flip only for confirmed CS/S1 targets.
+# Why this is optimal:
+#   - Comms masks HTTP APIs (InternetOpenA/ConnectA) via obfuscated calls
+#   - Core APIs (VirtualAlloc, VirtualProtect, ...) fall through to indirect
+#     syscalls, bypassing EDR userland hooks
+#
+# Why `All` is WORSE (not better):
+#   `All` routes Core APIs through obfuscated calls INSTEAD of indirect
+#   syscalls. Those obfuscated calls get caught by CrowdStrike/S1 hooks.
+#   Booster's BeaconConfigCheck correctly rolls `All` BACK to `Comms` when
+#   it sees it — that's what the "BeaconGate masks Comms APIs" red-before /
+#   green-after row means. Do not misread it as "should be All".
 
 # process-inject {}
 allocator "VirtualAllocEx"  # required for drip loading
@@ -154,7 +157,7 @@ its own beacon-config patch, not asking you to edit the profile.
 2. All strrep replacements <= original length
 3. All pipe names have >= 3 `#` per comma-separated template
 4. No `parameter` terminators inside `output {}` blocks
-5. `beacon_gate` uses `All` not `ALL`
+5. `beacon_gate` group keyword uses capital-first PascalCase (`Comms`, not `comms` or `COMMS`)
 6. Allocator matches drip loading (`VirtualAlloc` stage, `VirtualAllocEx` inject)
 7. `tasks_proxy_max_size` < `tasks_max_size`
 8. No transform-obfuscate / no prepend|append in stage transforms
@@ -164,7 +167,7 @@ its own beacon-config patch, not asking you to edit the profile.
 12. Safe spawnto, unique post-ex pipes, obfuscate true
 13. Theme consistency (headers, URIs, UA, cert, cookies match one service)
 14. Cross-profile separation (if multiple profiles exist)
-15. `beacon_gate` matches target EDR (`All` for MDE default; `Comms` for CS/S1)
+15. `beacon_gate { Comms; }` — never `All` (All routes Core APIs through hooked obfuscated calls; Comms + `syscall_method "Indirect"` is optimal per Outflank/Dima)
 16. No `set killdate` anywhere — that option is invalid at any profile scope (set via Booster or Aggressor)
 
 ## Output Format
