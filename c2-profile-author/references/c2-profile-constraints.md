@@ -1,4 +1,4 @@
-# Cobalt Strike 4.12 Malleable C2 - Hard Constraints & Opsec Baseline
+# Cobalt Strike 4.13 Malleable C2 - Hard Constraints & Opsec Baseline
 
 ## Table of Contents
 - [c2lint Hard Constraints](#c2lint-hard-constraints)
@@ -94,6 +94,18 @@ Group keywords are **case-sensitive** with capital first letter:
 **`ALL` (all caps) is invalid** and will fail to compile.
 
 Individual APIs use PascalCase: `VirtualAlloc;`, `InternetConnectA;`, `VirtualProtect;`
+
+### beacon_gate Group Selection by Target EDR
+
+The group choice is a real opsec tradeoff, not a fixed prescription. Pick by target EDR:
+
+| Target EDR | Recommended | Why |
+|---|---|---|
+| **MDE / Defender for Endpoint** (default) | `beacon_gate { All; }` | Booster's MDE hardening scanner flags anything less than All and auto-upgrades the config. MDE is the most common target in our engagements — this is the default unless you know otherwise. |
+| CrowdStrike Falcon, SentinelOne | `beacon_gate { Comms; }` | Falcon/S1 hook obfuscated calls. `All` routes Core APIs (VirtualAlloc, VirtualProtect, ...) through those hooked paths and gets caught. `Comms` only masks HTTP APIs; Core APIs then fall through to `syscall_method "Indirect"` and bypass userland hooks. |
+| Mixed or unknown target | `beacon_gate { Comms; }` | Safer failure mode — syscall path is broadly effective; obfuscated-call path is EDR-specific. |
+
+`syscall_method "Indirect"` must always be set regardless of `beacon_gate` group — it's what Core APIs fall through to when `beacon_gate` doesn't cover them.
 
 ### Allocator + Drip Loading
 
@@ -196,6 +208,11 @@ BeaconBooster (and defenders) fingerprint profiles against the public reference 
 | `data_jitter` | `"0"` | `"40"` - `"80"` |
 | `tasks_max_size` | `"2097152"` (2MB) | `"104857600"` (100MB) |
 | `tasks_proxy_max_size` | `"921600"` | `"94371840"` (~90MB, must be < tasks_max_size) |
+| `killdate` | unset | Engagement end date as `YYYYMMDD` — beacon self-expires |
+
+### Killdate is mandatory ops hygiene
+
+`set killdate "YYYYMMDD";` at global scope tells Beacon to stop calling home on that date. Any beacon still calling out after engagement end is unauthorized access — legal, contractual, and reputational exposure. Beacon Booster's config-updates panel auto-injects it if missing; set it in the profile so a stale build handed off to another operator can't outlive the engagement window.
 
 ### Memory & Injection Opsec
 

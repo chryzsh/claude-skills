@@ -1,9 +1,9 @@
 ---
 name: c2-profile-author
-description: Author, review, or modify Cobalt Strike 4.12+ malleable C2 profiles with Beacon Booster compatibility, opsec hardening, and cross-profile separation for multi-actor simulation. Use when (1) creating new C2 profiles, (2) auditing/reviewing existing profiles for c2lint errors or opsec gaps, (3) theming profiles to mimic specific cloud/SaaS traffic, (4) comparing profiles for cross-attribution risk, or (5) fixing c2lint validation failures.
+description: Author, review, or modify Cobalt Strike 4.13 malleable C2 profiles with Beacon Booster compatibility, opsec hardening, and cross-profile separation for multi-actor simulation. Sub-profiles inherit a shared hardening baseline (reference_mod_413.profile) and differ only in theme/separation. Use when (1) creating new C2 profiles, (2) auditing/reviewing existing profiles for c2lint errors or opsec gaps, (3) theming profiles to mimic specific cloud/SaaS traffic, (4) comparing profiles for cross-attribution risk, or (5) fixing c2lint validation failures.
 ---
 
-# CS 4.12 Malleable C2 Profile Author
+# CS 4.13 Malleable C2 Profile Author
 
 ## Modes
 
@@ -41,12 +41,13 @@ Known removals:
 ### Create
 
 1. **Check reference freshness** - Compare local reference profile against upstream if CS version has changed
-2. Read [references/c2-profile-constraints.md](references/c2-profile-constraints.md) for hard constraints and opsec baseline
-3. Read [references/traffic-themes.md](references/traffic-themes.md) for theme patterns
-4. Read example profiles in [references/profiles/](references/profiles/) to match quality and structure
-5. If other profiles exist in the project, read them and consult [references/cross-profile-separation.md](references/cross-profile-separation.md)
-6. Write the profile following block order, constraints, and Beacon Booster checklist
-7. Self-review against the checklist below before delivering
+2. Read [references/profile-baseline.md](references/profile-baseline.md) - names which blocks are baseline (copy from `reference_mod_413.profile`) vs theme/separation (build per sub-profile)
+3. Read [references/c2-profile-constraints.md](references/c2-profile-constraints.md) for hard constraints and opsec baseline
+4. Read [references/traffic-themes.md](references/traffic-themes.md) for theme patterns
+5. Read `reference_mod_413.profile` and one existing sub-profile (`cloudflare_413`, `m365_exchange_413`, etc.) to match structure
+6. If other profiles exist in the project, read them and consult [references/cross-profile-separation.md](references/cross-profile-separation.md)
+7. Write the sub-profile: copy the baseline hardening blocks verbatim, build the theme layer against `traffic-themes.md`, vary the separation knobs
+8. Self-review against the checklist below before delivering
 
 ### Review
 
@@ -97,14 +98,22 @@ post-ex {}
 sleep_mask "true", cleanup "true", syscall_method "Indirect"
 allocator "VirtualAlloc"   # required for drip loading
 rdll_use_driploading "true"
-beacon_gate { Comms; }     # NOT All - see below
+beacon_gate { All; }       # baseline - MDE default; flip to Comms for CS/S1
 # No transform-obfuscate, no prepend/append in stage transforms
 
-# beacon_gate does obfuscated calls, NOT syscalls.
-# All = Core APIs use obfuscated calls instead of indirect syscalls,
-#        which gets caught by CrowdStrike/S1 hooks.
-# Comms = only masks HTTP APIs; Core APIs use syscall_method "Indirect"
-#          to bypass EDR userland hooks. This is the optimal combo.
+# beacon_gate — pick by target EDR:
+#
+# Baseline: beacon_gate { All; }
+#   MDE / Defender for Endpoint is the most common target in our engagements.
+#   Booster's MDE hardening scanner flags anything less than All as a red mark
+#   and auto-upgrades the config. Every profile in the set (reference_mod_413
+#   and its sub-profiles) ships with All for this reason.
+#
+# Fallback: beacon_gate { Comms; }
+#   CrowdStrike Falcon and SentinelOne hook obfuscated calls. All would route
+#   Core APIs (VirtualAlloc, VirtualProtect, ...) through those hooked paths.
+#   With Comms only, Core APIs fall through to syscall_method "Indirect" and
+#   bypass userland hooks. Flip only for confirmed CS/S1 targets.
 
 # process-inject {}
 allocator "VirtualAllocEx"  # required for drip loading
@@ -120,7 +129,10 @@ spawnto != rundll32.exe
 ```
 tasks_max_size "104857600"        # 100MB - avoid task size errors
 tasks_proxy_max_size "94371840"   # ~90MB - MUST be < tasks_max_size
+killdate "YYYYMMDD"               # engagement end date - beacon self-expires
 ```
+
+`killdate` is mandatory ops hygiene: any beacon still calling home after engagement end is unauthorized access. Booster auto-injects it if missing; set it in the profile so a stale build can't outlive the engagement.
 
 ## Review Checklist
 
@@ -138,6 +150,8 @@ tasks_proxy_max_size "94371840"   # ~90MB - MUST be < tasks_max_size
 12. Safe spawnto, unique post-ex pipes, obfuscate true
 13. Theme consistency (headers, URIs, UA, cert, cookies match one service)
 14. Cross-profile separation (if multiple profiles exist)
+15. `killdate` set to engagement end date (YYYYMMDD)
+16. `beacon_gate` matches target EDR (`All` for MDE default; `Comms` for CS/S1)
 
 ## Output Format
 
@@ -151,16 +165,11 @@ tasks_proxy_max_size "94371840"   # ~90MB - MUST be < tasks_max_size
 - [references/cross-profile-separation.md](references/cross-profile-separation.md) - Multi-actor separation rules and differentiation checklist table
 - [references/traffic-themes.md](references/traffic-themes.md) - Theme selection, anatomy of a convincing theme, examples for Exchange/OneDrive/GA/Cloudflare
 - [references/beacon-booster-guide.txt](references/beacon-booster-guide.txt) - Full Beacon Booster documentation (UDRLs, sleepmasks, YARA bypasses, Update Config)
+- [references/profile-baseline.md](references/profile-baseline.md) - Which blocks are baseline (must match `reference_mod_413`) vs theme/separation (must vary per sub-profile). Read before creating or editing any 4.13 profile.
 - [references/profiles/](references/profiles/) - Production profiles and upstream reference:
-  - `reference.412.profile` - Official CS 4.12 reference (upstream baseline)
-  - `reference.413.profile` - Official CS 4.13 reference (current upstream baseline)
-  - `reference_mod_412.profile` - Hardened Azure/API theme (aco-a scenario)
-  - `reference_mod_413.profile` - CS 4.13-compatible hardened Azure/API theme
-  - `ganalytics_412.profile` - Google Analytics theme
-  - `ganalytics_413.profile` - CS 4.13-compatible Google Analytics theme
-  - `cloudflare_412.profile` - Cloudflare CDN/API theme
-  - `cloudflare_413.profile` - CS 4.13-compatible Cloudflare CDN/API theme
-  - `m365_exchange_412.profile` - Exchange Online/Outlook theme (fenix-a)
-  - `m365_exchange_413.profile` - CS 4.13-compatible Exchange Online/Outlook theme
-  - `onedrive_sync_412.profile` - OneDrive/SharePoint sync theme (fenix-b)
-  - `onedrive_sync_413.profile` - CS 4.13-compatible OneDrive/SharePoint sync theme
+  - `reference.413.profile` - Official CS 4.13 reference (upstream baseline, do not edit)
+  - `reference_mod_413.profile` - **Azure Function redirector baseline** - hardening source of truth for all sub-profiles below
+  - `cloudflare_413.profile` - Cloudflare CDN/API theme (sub-profile)
+  - `ganalytics_413.profile` - Google Analytics theme (sub-profile)
+  - `m365_exchange_413.profile` - Exchange Online/Outlook theme, fenix-a scenario (sub-profile)
+  - `onedrive_sync_413.profile` - OneDrive/SharePoint sync theme, fenix-b scenario (sub-profile)
