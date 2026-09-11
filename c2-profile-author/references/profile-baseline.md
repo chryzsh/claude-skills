@@ -181,3 +181,31 @@ When the hardening posture changes (new CS release, new Booster requirement, new
 2. Update this document if the baseline vs theme split changed.
 3. Propagate the baseline change to every sub-profile in the same commit.
 4. Run c2lint on every profile.
+
+## YARA rule mitigation via stage transforms
+
+Public YARA rules match against the compiled beacon binary. Some match on strings (fixable via `strrep` in stage.transform-x86/x64), others match on code-byte patterns (only fixable via UDRL/sleepmask replacement, which Beacon Booster provides). The baseline's `stage.transform-x86 {}` and `stage.transform-x64 {}` include two `strrep` lines that break two rules simultaneously:
+
+```
+strrep "%s as %s\\%s: %d" "%s at %s\\%s: %d"
+strrep "%02d/%02d/%02d %02d:%02d:%02d" "%02d.%02d.%02d %02d.%02d.%02d"
+```
+
+These are `printf` format strings shared between:
+- `HKTL_Win_CobaltStrike` (Volexity) — condition is `all of them`; missing either $s3 or $s4 breaks the rule.
+- `Windows_Trojan_CobaltStrike_3dc22d14` (Elastic) — condition is `all of them` on exactly those two strings.
+
+Length-checked: both replacements are byte-identical in length to the originals (15 and 29 bytes respectively). Functional impact is cosmetic: `runas`-output looks like `chrisr at CORP\admin: 1234` instead of `chrisr as CORP\admin: 1234`; timestamps look like `01.15.24 12.34.56` instead of `01/15/24 12:34:56`. No behavioral break.
+
+**Rules NOT fixable by profile strrep** (require Beacon Booster's UDRL/sleepmask replacement):
+
+- `Windows_Trojan_CobaltStrike_663fc95d` (Elastic) — single 32-byte x64 function-prologue pattern
+- `CobaltStrike_sleepmask` / `CodeX_CobaltStrike_sleepmask` (CodeX) — 50-byte x64 sleep-mask function prologue
+- `MALW_cobaltrike` (Felix Bilstein) — 16 code-byte patterns, 7-of-16 threshold
+
+If a sub-profile is deployed pre-boost, these three rules will still trigger. Boosting (UDRL + custom sleepmask) is required to defeat them; profile-only cannot.
+
+When adding new YARA rules to defeat, prefer strreps that:
+1. Target strings that appear in `all of them` conditions (breaking one string defeats the whole rule)
+2. Have replacements of `≤` the original length (c2lint enforces this)
+3. Don't affect functional strings (avoid changing format specifiers that get parsed, URL/protocol tokens the beacon interprets, or crypto algorithm identifiers)
