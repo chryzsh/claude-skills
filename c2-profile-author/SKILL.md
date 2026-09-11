@@ -41,12 +41,12 @@ Known removals:
 ### Create
 
 1. **Check reference freshness** - Compare local reference profile against upstream if CS version has changed
-2. Read [references/profile-baseline.md](references/profile-baseline.md) - names which blocks are baseline (copy from `reference_mod_413.profile`) vs theme/separation (build per sub-profile)
+2. Read [references/profile-baseline.md](references/profile-baseline.md) - names which blocks are baseline (copy from `~/opt/c2/redteam-infra/profiles/reference_mod_413.profile`) vs theme/separation (build per sub-profile)
 3. Read [references/c2-profile-constraints.md](references/c2-profile-constraints.md) for hard constraints and opsec baseline
 4. Read [references/traffic-themes.md](references/traffic-themes.md) for theme patterns
-5. Read `reference_mod_413.profile` and one existing sub-profile (`cloudflare_413`, `m365_exchange_413`, etc.) to match structure
+5. Read `~/opt/c2/redteam-infra/profiles/reference_mod_413.profile` and one existing sub-profile (`cloudflare_413`, `m365_exchange_413`, etc.) from that same directory to match structure
 6. If other profiles exist in the project, read them and consult [references/cross-profile-separation.md](references/cross-profile-separation.md)
-7. Write the sub-profile: copy the baseline hardening blocks verbatim, build the theme layer against `traffic-themes.md`, vary the separation knobs
+7. Write the sub-profile into `~/opt/c2/redteam-infra/profiles/`: copy the baseline hardening blocks verbatim, build the theme layer against `traffic-themes.md`, vary the separation knobs
 8. Self-review against the checklist below before delivering
 
 ### Review
@@ -166,10 +166,17 @@ killdate "YYYYMMDD"               # engagement end date - beacon self-expires
 - [references/traffic-themes.md](references/traffic-themes.md) - Theme selection, anatomy of a convincing theme, examples for Exchange/OneDrive/GA/Cloudflare
 - [references/beacon-booster-guide.txt](references/beacon-booster-guide.txt) - Full Beacon Booster documentation (UDRLs, sleepmasks, YARA bypasses, Update Config)
 - [references/profile-baseline.md](references/profile-baseline.md) - Which blocks are baseline (must match `reference_mod_413`) vs theme/separation (must vary per sub-profile). Read before creating or editing any 4.13 profile.
-- [references/profiles/](references/profiles/) - Production profiles and upstream reference:
+- [references/profiles/](references/profiles/) - Upstream CS reference only:
   - `reference.413.profile` - Official CS 4.13 reference (upstream baseline, do not edit)
-  - `reference_mod_413.profile` - **Azure Function redirector baseline** - hardening source of truth for all sub-profiles below
-  - `cloudflare_413.profile` - Cloudflare CDN/API theme (sub-profile)
-  - `ganalytics_413.profile` - Google Analytics theme (sub-profile)
-  - `m365_exchange_413.profile` - Exchange Online/Outlook theme, fenix-a scenario (sub-profile)
-  - `onedrive_sync_413.profile` - OneDrive/SharePoint sync theme, fenix-b scenario (sub-profile)
+
+## Operational Profiles Live Elsewhere
+
+Operational profiles are NOT stored in this skill. The canonical library lives at `~/opt/c2/redteam-infra/profiles/` (private repo), where the ansible plays read them for CS teamserver deploy:
+
+- `reference_mod_413.profile` - **Azure Function redirector baseline** - hardening source of truth for all sub-profiles
+- `cloudflare_413.profile` - Cloudflare CDN/API sub-profile
+- `ganalytics_413.profile` - Google Analytics sub-profile
+- `m365_exchange_413.profile` - Exchange Online/Outlook sub-profile (fenix-a)
+- `onedrive_sync_413.profile` - OneDrive/SharePoint sync sub-profile (fenix-b)
+
+This skill is the specification (structure, opsec constraints, baseline-vs-theme model); `~/opt/c2/redteam-infra/profiles/` is the implementation (values, killdates, engagement tuning). When creating or reviewing profiles, cross-reference both surfaces: read `references/profile-baseline.md` for the structural spec, then look at `~/opt/c2/redteam-infra/profiles/reference_mod_413.profile` for the canonical baseline in use.
