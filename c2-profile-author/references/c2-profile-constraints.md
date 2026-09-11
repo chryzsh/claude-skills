@@ -208,11 +208,17 @@ BeaconBooster (and defenders) fingerprint profiles against the public reference 
 | `data_jitter` | `"0"` | `"40"` - `"80"` |
 | `tasks_max_size` | `"2097152"` (2MB) | `"104857600"` (100MB) |
 | `tasks_proxy_max_size` | `"921600"` | `"94371840"` (~90MB, must be < tasks_max_size) |
-| `killdate` | unset | Engagement end date as `YYYYMMDD` — beacon self-expires |
 
-### Killdate is mandatory ops hygiene
+### Killdate is NOT a profile option
 
-`set killdate "YYYYMMDD";` at global scope tells Beacon to stop calling home on that date. Any beacon still calling out after engagement end is unauthorized access — legal, contractual, and reputational exposure. Beacon Booster's config-updates panel auto-injects it if missing; set it in the profile so a stale build handed off to another operator can't outlive the engagement window.
+`set killdate "YYYYMMDD";` at Global scope is invalid — c2lint rejects it with `Error: invalid option for <Global>`. Killdate is not a malleable C2 profile setting at any scope (`Global`, `stage`, `process-inject`, `post-ex`).
+
+Killdate is set through one of two channels, neither of which touches the profile:
+
+- **Beacon Booster's Update Config** patches the killdate into the compiled beacon config (the `.bin`) at boost time. Booster's "Killdate limited to project end (YYYYMMDD)" panel row reports what Booster patched — not a profile-level ask.
+- **Aggressor Script** at teamserver runtime: `killdate(year, month, day);` in a `.cna` loaded by the teamserver.
+
+Either mechanism is mandatory ops hygiene, but the profile stays killdate-free. If you inherit a profile that has `set killdate ...` in it, delete the line — c2lint will fail the profile otherwise on CS 4.13.
 
 ### Memory & Injection Opsec
 

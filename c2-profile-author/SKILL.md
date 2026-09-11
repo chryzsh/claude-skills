@@ -129,10 +129,24 @@ spawnto != rundll32.exe
 ```
 tasks_max_size "104857600"        # 100MB - avoid task size errors
 tasks_proxy_max_size "94371840"   # ~90MB - MUST be < tasks_max_size
-killdate "YYYYMMDD"               # engagement end date - beacon self-expires
 ```
 
-`killdate` is mandatory ops hygiene: any beacon still calling home after engagement end is unauthorized access. Booster auto-injects it if missing; set it in the profile so a stale build can't outlive the engagement.
+## Killdate is NOT a profile option
+
+`set killdate "YYYYMMDD"` at Global scope makes c2lint reject the profile
+(`invalid option for <Global>`). Killdate is set elsewhere:
+
+- **Beacon Booster's Update Config panel** patches the killdate byte into the
+  compiled beacon config (the `.bin`) at boost time. If you use Booster, the
+  killdate is applied there — nothing to do in the profile.
+- **Aggressor Script** at teamserver runtime: `killdate(year, month, day);` in
+  a `.cna` loaded by the teamserver.
+
+Either mechanism is mandatory ops hygiene — a beacon still calling home after
+engagement end is unauthorized access — but neither belongs in the malleable
+C2 profile. When Booster's config-updates panel shows "Killdate limited to
+project end (YYYYMMDD)" as a red-before / green-after row, it's reporting on
+its own beacon-config patch, not asking you to edit the profile.
 
 ## Review Checklist
 
@@ -150,8 +164,8 @@ killdate "YYYYMMDD"               # engagement end date - beacon self-expires
 12. Safe spawnto, unique post-ex pipes, obfuscate true
 13. Theme consistency (headers, URIs, UA, cert, cookies match one service)
 14. Cross-profile separation (if multiple profiles exist)
-15. `killdate` set to engagement end date (YYYYMMDD)
-16. `beacon_gate` matches target EDR (`All` for MDE default; `Comms` for CS/S1)
+15. `beacon_gate` matches target EDR (`All` for MDE default; `Comms` for CS/S1)
+16. No `set killdate` anywhere — that option is invalid at any profile scope (set via Booster or Aggressor)
 
 ## Output Format
 

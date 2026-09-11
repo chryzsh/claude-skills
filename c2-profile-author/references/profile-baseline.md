@@ -25,8 +25,9 @@ set steal_token_access_mask "11";
 set tasks_max_size "104857600";
 set tasks_proxy_max_size "94371840";
 set tasks_dns_proxy_max_size "71680";
-set killdate "YYYYMMDD";           # engagement end - matches across all profiles in the set
 ```
+
+**Do NOT add `set killdate` here or anywhere else in the profile.** It's not a malleable C2 option and c2lint rejects it at every scope. Killdate is applied by Beacon Booster's Update Config to the compiled `.bin`, or by Aggressor Script at teamserver runtime.
 
 ### `stage {}` — hardening core
 
