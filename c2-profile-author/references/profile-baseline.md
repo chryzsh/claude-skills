@@ -182,30 +182,33 @@ When the hardening posture changes (new CS release, new Booster requirement, new
 3. Propagate the baseline change to every sub-profile in the same commit.
 4. Run c2lint on every profile.
 
-## YARA rule mitigation via stage transforms
+## YARA rule mitigation via profile strreps — DON'T TRY
 
-Public YARA rules match against the compiled beacon binary. Some match on strings (fixable via `strrep` in stage.transform-x86/x64), others match on code-byte patterns (only fixable via UDRL/sleepmask replacement, which Beacon Booster provides). The baseline's `stage.transform-x86 {}` and `stage.transform-x64 {}` include two `strrep` lines that break two rules simultaneously:
+**Empirically ineffective in CS 4.13 with `host_stage "false"` and stageless `.csrl` exports.**
+
+We tried this — added two length-preserving strreps in `stage.transform-x86 {}` and `stage.transform-x64 {}` to defeat two rules that share `printf` format strings:
 
 ```
 strrep "%s as %s\\%s: %d" "%s at %s\\%s: %d"
 strrep "%02d/%02d/%02d %02d:%02d:%02d" "%02d.%02d.%02d %02d.%02d.%02d"
 ```
 
-These are `printf` format strings shared between:
-- `HKTL_Win_CobaltStrike` (Volexity) — condition is `all of them`; missing either $s3 or $s4 breaks the rule.
-- `Windows_Trojan_CobaltStrike_3dc22d14` (Elastic) — condition is `all of them` on exactly those two strings.
+Target rules: `HKTL_Win_CobaltStrike` (Volexity, `all of them`) and `Windows_Trojan_CobaltStrike_3dc22d14` (Elastic, `all of them`). Break either shared string and both rules should die.
 
-Length-checked: both replacements are byte-identical in length to the originals (15 and 29 bytes respectively). Functional impact is cosmetic: `runas`-output looks like `chrisr at CORP\admin: 1234` instead of `chrisr as CORP\admin: 1234`; timestamps look like `01.15.24 12.34.56` instead of `01/15/24 12:34:56`. No behavioral break.
+**Deployed via `./run_cs_profile_refresh.sh skatt-q3` (c2lint passed, container restarted, active.profile SHA verified against repo). Result: zero change in Booster's YARA panel.** All five rules still triggered pre-boost with every string still matching. Both parsers we tried on the exported `.csrl` and `.bin` (`1768.py` and `CobaltStrikeParser`) failed even to locate the standard stageless-beacon layout — the file is wrapped by something (Booster-independent) before the classic CS beacon body starts. `strings` on the export shows nothing meaningful either way. We couldn't verify from disk whether the strreps applied to the packed beacon.
 
-**Rules NOT fixable by profile strrep** (require Beacon Booster's UDRL/sleepmask replacement):
+Definitive proof would require detonation + memory dump + `strings` on the unpacked process memory — not worth it. The practical conclusion:
 
-- `Windows_Trojan_CobaltStrike_663fc95d` (Elastic) — single 32-byte x64 function-prologue pattern
-- `CobaltStrike_sleepmask` / `CodeX_CobaltStrike_sleepmask` (CodeX) — 50-byte x64 sleep-mask function prologue
-- `MALW_cobaltrike` (Felix Bilstein) — 16 code-byte patterns, 7-of-16 threshold
+**Rely on Beacon Booster's UDRL/sleepmask for YARA-rule bypass at runtime.** Profile-side `stage.transform` strreps are effective for *theme-fingerprint* changes (`ReflectiveLoader` → `WorkerInit`, `beacon.x64.dll` → `clrjit.dll`) — those visibly affect cross-profile separation and impersonation posture — but do not appear to reach the exported artifact in a way that changes what a YARA scanner sees. If you need YARA-rule coverage without Booster, the fix is at the loader layer (custom UDRL, sleepmask, or beacon repacker), not at the profile.
 
-If a sub-profile is deployed pre-boost, these three rules will still trigger. Boosting (UDRL + custom sleepmask) is required to defeat them; profile-only cannot.
+### YARA rules seen triggering pre-boost on our current baseline (all defeated post-boost by Booster)
 
-When adding new YARA rules to defeat, prefer strreps that:
-1. Target strings that appear in `all of them` conditions (breaking one string defeats the whole rule)
-2. Have replacements of `≤` the original length (c2lint enforces this)
-3. Don't affect functional strings (avoid changing format specifiers that get parsed, URL/protocol tokens the beacon interprets, or crypto algorithm identifiers)
+| Rule | Author | Match kind | Fixable via profile? |
+|---|---|---|---|
+| `Windows_Trojan_CobaltStrike_663fc95d` | Elastic | 32-byte x64 function-prologue code pattern | No — needs UDRL |
+| `Windows_Trojan_CobaltStrike_3dc22d14` | Elastic | 2 printf format strings, `all of them` | No — strrep didn't reach export |
+| `CodeX_CobaltStrike_sleepmask` | CodeX | ~50-byte sleep-mask function prologue | No — needs custom sleepmask |
+| `HKTL_Win_CobaltStrike` | Volexity | 6 strings + 1 hex HTTP header, `all of them` | No — strrep didn't reach export |
+| `MALW_cobaltrike` | Felix Bilstein | 16 opcode patterns, 7-of-16 threshold | No — needs UDRL |
+
+Rule sources archived in `redteam-infra:profiles/docs/*.yar` for reference.

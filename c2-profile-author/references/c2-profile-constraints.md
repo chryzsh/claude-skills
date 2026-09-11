@@ -224,6 +224,28 @@ BeaconBooster (and defenders) fingerprint profiles against the public reference 
 | `tasks_max_size` | `"2097152"` (2MB) | `"104857600"` (100MB) |
 | `tasks_proxy_max_size` | `"921600"` | `"94371840"` (~90MB, must be < tasks_max_size) |
 
+### Beacon Booster panel interpretation
+
+The Beacon Booster "Beacon Config Updates" panel has two kinds of rows, and mistaking one for the other led to a full session's worth of thrashing during initial skill development. Get this right on first read.
+
+**Profile-driven rows** (these DO reflect the malleable C2 profile — fix them in the profile if red-before-boost):
+
+- `Sleepmask Enabled` — `set sleep_mask "true"` in `stage {}`
+- `Cleanup Enabled` — `set cleanup "true"` in `stage {}` and `post-ex {}`
+- `Drip Loading Enabled` — `set rdll_use_driploading "true"` in `stage {}`, `set use_driploading "true"` in `process-inject {}`
+- `Initial permissions for BOF memory is RW` — `set startrwx "false"` in `process-inject {}`
+- `Runtime permissions for BOFs is RX/RW` — `set userwx "false"` in `process-inject {}`
+- `Minimum allocation for BOF memory greater than 4kb` — `set min_alloc "16384"` in `process-inject {}`
+- `Non-default x64 spawnto` / `Non-default x86 spawnto` — `set spawnto_x64` / `set spawnto_x86` in `post-ex {}` to anything except `rundll32.exe`
+
+**Always-modified rows** (Booster ALWAYS patches these post-boost, regardless of what the profile says — no profile change will make them green pre-boost):
+
+- `Syscall Method WinAPI` — Booster patches syscall path via its UDRL at boost time; unrelated to profile `syscall_method "Indirect"` (still set that in the profile for the pre-boost case, but don't expect this row to go green).
+- `BeaconGate masks Comms APIs` / `BeaconGate masks all APIs` — Booster ALWAYS patches BeaconGate config via UDRL. Row title toggles between "Comms APIs" and "all APIs" depending on whether Booster is rolling `All` back to `Comms` or expanding on `Comms` — cosmetic, not a diagnostic. Ignore the title.
+- `Killdate limited to project end (YYYYMMDD)` — Booster ALWAYS patches killdate via Update Config. `killdate` cannot be set in the profile (c2lint rejects it at any scope — see below).
+
+**How to use this panel:** if a profile-driven row is red pre-boost, the profile has a gap — fix it. If an always-modified row is red pre-boost, that's expected and correct. The goal is "profile-driven rows all green, always-modified rows always modified" — that means the profile is right AND Booster is doing its job.
+
 ### Killdate is NOT a profile option
 
 `set killdate "YYYYMMDD";` at Global scope is invalid — c2lint rejects it with `Error: invalid option for <Global>`. Killdate is not a malleable C2 profile setting at any scope (`Global`, `stage`, `process-inject`, `post-ex`).

@@ -63,7 +63,7 @@ Known removals:
 3. Fill in the differentiation checklist table
 4. Flag any shared values that should differ
 
-## Top 7 Errors (most common, hardest to spot)
+## Top 8 Errors (most common, hardest to spot)
 
 1. **strrep too long** - `"beacon.dll"` is 10 chars. Always count before writing.
 2. **Pipe names < 3 hashes** - Every pipe template (pipename, pipename_stager, post-ex.pipename) needs >= 3 `#`. Check each comma-separated entry independently.
@@ -72,6 +72,7 @@ Known removals:
 5. **Stager URI + params >= 80 bytes** - Total line length, not just the URI path.
 6. **Wrong allocator for drip loading** - `VirtualAlloc` (stage) and `VirtualAllocEx` (inject) required. `MapViewOfFile`/`NtMapViewOfSection` silently ignore drip loading.
 7. **`tasks_proxy_max_size` >= `tasks_max_size`** - Proxy max must be strictly less. Use 104857600 / 94371840.
+8. **strrep for YARA detection strings on CS 4.13 stageless `.csrl` exports** — empirically doesn't reach the export. Use strrep for theme fingerprint changes (ReflectiveLoader → SyncProvider, beacon.dll → fsync.dll) but don't rely on it to defeat detection-string YARA rules. See `references/profile-baseline.md` "YARA rule mitigation" — that's Beacon Booster's job.
 
 ## Profile Block Order
 
