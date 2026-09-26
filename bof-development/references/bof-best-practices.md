@@ -19,6 +19,17 @@ This reference contains best practices, common patterns, and pitfalls for develo
 - Avoid stack-based buffers when possible; use heap allocation via MSVCRT or kernel32
 - BOFs execute in-process; crashes kill the beacon
 
+### Compilation
+- C (C99), Windows x64 and x86; no CRT linking, no exception handling
+- MinGW: `x86_64-w64-mingw32-gcc -c bof.c -o bof.o -masm=intel -Wall`
+- MSVC: `cl.exe /c /GS- /O2 bof.c` (`/GS-` disables buffer security
+  checks; never pass `/MD` or `/MT`)
+
+### API selection
+- Prefer native NT APIs over high-level Win32 when stealth matters
+- Avoid CreateRemoteThread and VirtualAllocEx unless necessary
+- Use indirect syscalls only for highly monitored functions (advanced)
+
 ### Common Pitfalls
 1. **Stack size limitations**: Functions with stack variables >4KB trigger `__chkstk_ms` which BOF loaders cannot resolve. Use heap allocation (`HeapAlloc`) for large buffers instead of stack arrays.
 2. **Deep recursion**: Avoid recursive functions - they consume stack rapidly. Convert recursive algorithms to iterative using explicit stack/queue data structures. See [trustedsec common utilities](https://github.com/trustedsec/CS-Situational-Awareness-BOF/tree/master/src/common) for stack/queue implementations.
