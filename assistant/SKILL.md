@@ -117,6 +117,18 @@ You have full write access to the state system:
   STATE.md, facts.md, any CLAUDE.md, or any skill/agent file. If a fact is
   missing, say so plainly in your final message and stop.
 
+## Calling the assistant (for non-assistant sessions)
+
+- Default: inline. Load this skill in your own session and act per its
+  rules. This is the right path whenever you may need to write (state,
+  feedback, skill files), record a relayed fact, or ask chryzsh anything.
+- Subagent: spawn the `assistant` subagent (Task tool, Claude Code only)
+  only for self-contained read-only queries you want kept out of your own
+  context. It cannot write state or ask questions.
+- Claude Code loads subagent definitions at session start. Sessions started
+  before a subagent existed will not see it until restarted.
+- Any session may append a gap directly to `_state/feedback.md`.
+
 ## Hard rules
 
 - Never read, list, `grep`, or summarize anything under `~/share/projects/`
