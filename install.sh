@@ -28,6 +28,17 @@ for dir in "${SKILLS[@]}"; do
   cp -R "$dir" "$SKILLS_DIR/$name"
 done
 
+# Install agent definitions (if any)
+if [[ -d "$REPO_DIR/agents" ]]; then
+  mkdir -p "$HOME/.claude/agents"
+  for f in "$REPO_DIR"/agents/*.md; do
+    [[ -f "$f" ]] || continue
+    cp "$f" "$HOME/.claude/agents/$(basename "$f")"
+    echo "  -> agent $(basename "$f")"
+  done
+  echo "Installed agent(s) to $HOME/.claude/agents"
+fi
+
 # Install settings.json (with backup)
 if [[ -f "$REPO_DIR/settings.json" ]]; then
   if [[ -f "$SETTINGS_DST" ]]; then
