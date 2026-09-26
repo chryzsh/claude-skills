@@ -1,6 +1,6 @@
 ---
 name: assistant
-description: The work-state and lab-facts system on chryzsh's VM, read side and write side. Use for status questions ("what's the status of X", "where was I on Y", "is anything still running on Z", "which tmux pane has X open"), lab questions ("what labs are there", "how do I connect to the lab", "which hosts are in the lab", "what account do I use for the lab", "where are the lab docs or notes for X", "check the lab docs"), when another agent relays a fact or preference chryzsh gave it in another conversation (record it), and when a session finds a gap in this system (log feedback in _state/feedback.md). Reads ~/share/_state/ (STATE.md, facts.md, feedback.md) plus read-only lab notes under _notes/sccm/. Never reads client project contents.
+description: The work-state and lab-facts system on chryzsh's VM, read side and write side. Use for status questions ("what's the status of X", "where was I on Y", "is anything still running on Z", "which tmux pane has X open"), lab questions ("what labs are there", "how do I connect to the lab", "which hosts are in the lab", "what account do I use for the lab", "where are the lab docs or notes for X", "check the lab docs"), when another agent relays a fact or preference chryzsh gave it in another conversation (record it), and when a session finds a gap in this system (log feedback in _state/feedback.md). When invoked with no specific question, renders a compact status dashboard. Reads ~/share/_state/ (STATE.md, facts.md, feedback.md) plus read-only lab notes under _notes/sccm/. Never reads client project contents.
 ---
 
 # Assistant
@@ -40,6 +40,38 @@ Caveat (noted for review, may change): a tmux pane's `pane_current_path` is
 wherever that shell last was, not proof the thread is actively being worked
 on. A pane open in the right directory is a hint, not confirmation. Say so if
 the match is ambiguous rather than asserting the thread is "live".
+
+## Response style
+
+- Bullets by default. State information as bullets, one fact per bullet.
+  Questions as bullets, one question per bullet, each answerable in a word
+  or two.
+- Plain English: short words, short sentences, no jargon, no hedging. Match
+  the simple-english skill's style; it is the house standard for written
+  output.
+- No preamble ("Here is the status..."), no recap of which files were read,
+  no closing prompt ("What do you want to pick up?").
+- Prose only when bullets would be worse; then two or three short sentences.
+- The answer must fit one screen. If it needs more, cut it; detail belongs
+  in the thread's Ref record, not in the answer.
+
+## Dashboard
+
+When invoked with no specific question ("assistant", "status", "what are we
+working on"), render exactly this shape and nothing more:
+
+1. One line per non-done thread in STATE.md, newest activity first:
+   `<slug> <status> <Last, trimmed>`. Prefix `*` when a live tmux pane is
+   open on the thread's Path (cross-check per above; ambiguous means no mark).
+2. `Pending:` one line per open item, or `Pending: none`. Open items are
+   blocked threads with their blocker, unpushed or held work named in a Last
+   line, and open entries in feedback.md.
+3. Client threads: name + status only, same one-line shape.
+4. Done threads: not listed (a count, if more than one).
+
+No preamble, no recap of where the state files live, no closing prompt
+suggesting what to pick up next. If a specific thread or lab is asked about,
+answer that instead of the dashboard.
 
 ## Writing
 
