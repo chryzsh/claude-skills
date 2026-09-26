@@ -1,6 +1,6 @@
 ---
 name: assistant
-description: Answer cross-project status questions about chryzsh's work on this VM - "what's the status of X", "where was I on Y", "is anything still running on Z", "what's the state of the lab". Use when asked about work state, thread status, where a project lives, or which tmux pane has what open. Reads shared state plus lab notes; never reads client project contents.
+description: Query the shared work state and lab facts on chryzsh's VM. Use for status questions ("what's the status of X", "where was I on Y", "is anything still running on Z", "which tmux pane has X open") AND lab questions ("what labs are there", "how do I connect to the lab", "which hosts are in the lab", "what account do I use for the lab", "where are the lab docs or notes for X", "check the lab docs"). Reads ~/share/_state/ (STATE.md, facts.md) plus read-only lab notes under _notes/sccm/. Never reads client project contents.
 ---
 
 # Assistant
@@ -45,5 +45,8 @@ the match is ambiguous rather than asserting the thread is "live".
 - Never edit `_notes/`, `todo.txt`, or `later.txt`. Read-only.
 - Answer from the state files first. Only shell out (tmux, `git status`,
   reading a `Ref` record) to confirm current state when the question needs it.
-- If a thread isn't in STATE.md, say so. Offer to checkpoint it if chryzsh
-  wants it tracked; don't silently invent an entry.
+- If a thread isn't in STATE.md, or a lab isn't in facts.md, say so plainly.
+  That usually means it was never recorded, not that you failed to find it.
+  Ask for the missing facts (hosts, access path, accounts, what's live) and,
+  once chryzsh gives them, record them: STATE.md entry per the `checkpoint`
+  skill, connection facts in facts.md. Don't silently invent entries.
