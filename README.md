@@ -21,6 +21,7 @@ This copies all skills to `~/.claude/skills/` and installs `settings.json` to `~
 | `oc2-bof-script-generator` | Convert Cobalt Strike .cna scripts to OC2 Python format |
 | `codex-prepush-review` | Pre-push code review using Codex CLI as a review partner |
 | `sccm-hacking` | Expert on the Misconfiguration Manager project and SCCM/ConfigMgr offensive security (submodule, see [chryzsh/sccm-hacking-skill](https://github.com/chryzsh/sccm-hacking-skill)) |
+| `simple-english` | Plain English in the spirit of ASD-STE100. Copied from the [AminBlg/SimpleEnglish](https://github.com/AminBlg/SimpleEnglish) plugin (v2.1.0, MIT) without its hooks, so it loads on demand instead of at every session start |
 
 ## Settings
 
