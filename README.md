@@ -23,6 +23,7 @@ This copies all skills to `~/.claude/skills/` and installs `settings.json` to `~
 | `sccm-hacking` | Expert on the Misconfiguration Manager project and SCCM/ConfigMgr offensive security (submodule, see [chryzsh/sccm-hacking-skill](https://github.com/chryzsh/sccm-hacking-skill)) |
 | `simple-english` | Plain English in the spirit of ASD-STE100. Copied from the [AminBlg/SimpleEnglish](https://github.com/AminBlg/SimpleEnglish) plugin (v2.1.0, MIT) without its hooks, so it loads on demand instead of at every session start |
 | `humanizer` | Rewrite AI-sounding prose. Copied from the [blader/humanizer](https://github.com/blader/humanizer) plugin (v3.0.0, MIT) |
+| `iart` | "I ain't reading that." Summarize long text, files, or links into a short, no-fluff briefing |
 | `writing-clearly-and-concisely` | Strunk, The Elements of Style, as a writing skill. Copied from the elements-of-style plugin in [obra/superpowers-marketplace](https://github.com/obra/superpowers-marketplace) (v1.0.0, public domain) |
 
 ## Settings
