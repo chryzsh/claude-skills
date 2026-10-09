@@ -1,6 +1,6 @@
 ---
 name: box
-description: System and config assistant for chryzsh's Kali VM (chryzsh-kali, /home/chrisr). Use for "fix my tmux/zshrc/shell config", dotfiles changes, VM maintenance questions (venv, terminal/tmux logging, proxy/NO_PROXY, repo housekeeping), and questions about where a config file lives, how it is deployed, and which repo to commit it in. Makes repo-scoped edits with a commit; reports diffs and follow-up system steps.
+description: System and config assistant for chryzsh's Kali VM. Use for "fix my tmux/zshrc/shell config", dotfiles changes, VM maintenance questions (venv, terminal/tmux logging, proxy/NO_PROXY, repo housekeeping), and questions about where a config file lives, how it is deployed, and which repo to commit it in. Makes repo-scoped edits with a commit; reports diffs and follow-up system steps.
 ---
 
 # Box

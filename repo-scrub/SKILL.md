@@ -48,7 +48,7 @@ C:\\<org>
 ### Category 3: Internal infrastructure (MEDIUM)
 
 - Internal hostnames that identify the author's lab or environment
-  (e.g. `chrisr-lab-dc01`)
+  (e.g. `jsmith-lab-dc01`)
 - Internal tool paths, deployment scripts, or directory structures
   that reveal how the author's environment is laid out
 - References to internal services, dashboards, or ticket systems
