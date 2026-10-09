@@ -1,6 +1,6 @@
 ---
 name: c2-profile-author
-description: Author, review, or modify Cobalt Strike 4.13 malleable C2 profiles with Beacon Booster compatibility, opsec hardening, and cross-profile separation for multi-actor simulation. Sub-profiles inherit a shared hardening baseline (~/opt/c2/redteam-infra/profiles/reference_mod_413.profile) and differ only in theme/separation. Use when (1) creating new C2 profiles, (2) auditing/reviewing existing profiles for c2lint errors or opsec gaps, (3) theming profiles to mimic specific cloud/SaaS traffic, (4) comparing profiles for cross-attribution risk, or (5) fixing c2lint validation failures.
+description: Author, review, or modify Cobalt Strike 4.13 malleable C2 profiles with Beacon Booster compatibility, opsec hardening, and cross-profile separation for multi-actor simulation. Sub-profiles inherit a shared hardening baseline and differ only in theme/separation. Use when (1) creating new C2 profiles, (2) auditing/reviewing existing profiles for c2lint errors or opsec gaps, (3) theming profiles to mimic specific cloud/SaaS traffic, (4) comparing profiles for cross-attribution risk, or (5) fixing c2lint validation failures.
 ---
 
 # CS 4.13 Malleable C2 Profile Author
@@ -41,12 +41,12 @@ Known removals:
 ### Create
 
 1. **Check reference freshness** - Compare local reference profile against upstream if CS version has changed
-2. Read [references/profile-baseline.md](references/profile-baseline.md) - names which blocks are baseline (copy from `~/opt/c2/redteam-infra/profiles/reference_mod_413.profile`) vs theme/separation (build per sub-profile)
+2. Read [references/profile-baseline.md](references/profile-baseline.md) - names which blocks are baseline (copy from your operational reference profile) vs theme/separation (build per sub-profile)
 3. Read [references/c2-profile-constraints.md](references/c2-profile-constraints.md) for hard constraints and opsec baseline
 4. Read [references/traffic-themes.md](references/traffic-themes.md) for theme patterns
-5. Read `~/opt/c2/redteam-infra/profiles/reference_mod_413.profile` and one existing sub-profile (`cloudflare_413`, `m365_exchange_413`, etc.) from that same directory to match structure
+5. Read the operational reference profile and one existing sub-profile to match structure
 6. If other profiles exist in the project, read them and consult [references/cross-profile-separation.md](references/cross-profile-separation.md)
-7. Write the sub-profile into `~/opt/c2/redteam-infra/profiles/`: copy the baseline hardening blocks verbatim, build the theme layer against `traffic-themes.md`, vary the separation knobs
+7. Write the sub-profile into the operational profiles directory: copy the baseline hardening blocks verbatim, build the theme layer against `traffic-themes.md`, vary the separation knobs
 8. Self-review against the checklist below before delivering
 
 ### Review
@@ -189,12 +189,4 @@ its own beacon-config patch, not asking you to edit the profile.
 
 ## Operational Profiles Live Elsewhere
 
-Operational profiles are NOT stored in this skill. The canonical library lives at `~/opt/c2/redteam-infra/profiles/` (private repo), where the ansible plays read them for CS teamserver deploy:
-
-- `reference_mod_413.profile` - **Azure Function redirector baseline** - hardening source of truth for all sub-profiles
-- `cloudflare_413.profile` - Cloudflare CDN/API sub-profile
-- `ganalytics_413.profile` - Google Analytics sub-profile
-- `m365_exchange_413.profile` - Exchange Online/Outlook sub-profile (fenix-a)
-- `onedrive_sync_413.profile` - OneDrive/SharePoint sync sub-profile (fenix-b)
-
-This skill is the specification (structure, opsec constraints, baseline-vs-theme model); `~/opt/c2/redteam-infra/profiles/` is the implementation (values, killdates, engagement tuning). When creating or reviewing profiles, cross-reference both surfaces: read `references/profile-baseline.md` for the structural spec, then look at `~/opt/c2/redteam-infra/profiles/reference_mod_413.profile` for the canonical baseline in use.
+Operational profiles are NOT stored in this skill. Keep them in a separate private repo alongside your teamserver deployment automation. The skill is the specification (structure, opsec constraints, baseline-vs-theme model); the operational repo is the implementation (values, killdates, engagement tuning). When creating or reviewing profiles, cross-reference both: read `references/profile-baseline.md` for the structural spec, then look at the operational reference profile for the canonical baseline in use.

@@ -1,12 +1,12 @@
 # Profile Baseline: reference_mod_413
 
-`reference_mod_413.profile` (canonical copy: `~/opt/c2/redteam-infra/profiles/reference_mod_413.profile`) is the hardening baseline for Cobalt Strike 4.13 profiles fronted by an Azure Function redirector. Every themed sub-profile (`cloudflare_413`, `ganalytics_413`, `m365_exchange_413`, `onedrive_sync_413`) in that same directory shares the hardening layer with this file and differs only in the HTTP theme and cross-profile-separation values.
+`reference_mod_413.profile` is the hardening baseline for Cobalt Strike 4.13 profiles fronted by an Azure Function redirector. Every themed sub-profile shares the hardening layer with this file and differs only in the HTTP theme and cross-profile-separation values.
 
-**Where profiles live.** Operational profiles are stored in the private `redteam-infra` repo at `~/opt/c2/redteam-infra/profiles/`, where the ansible plays read them for CS teamserver deploy. This skill contains only methodology (constraints, checklists, this baseline spec) and the upstream CS reference. When editing, use the redteam-infra path — the skill has no `.profile` files to edit.
+**Where profiles live.** Operational profiles belong in a separate private repo alongside your teamserver deployment automation. This skill contains only methodology (constraints, checklists, this baseline spec) and the upstream CS reference.
 
 **Rule of thumb**: if it protects the beacon (allocator, syscalls, obfuscation, memory perms, drip loading, kill switches), it comes from the baseline. If it shapes what the traffic *looks like* or distinguishes this operator from another, it's theme-specific.
 
-**Path convention throughout this doc:** unqualified `reference_mod_413.profile` = `~/opt/c2/redteam-infra/profiles/reference_mod_413.profile`. Same for the sub-profiles.
+**Path convention throughout this doc:** unqualified `reference_mod_413.profile` refers to your operational copy of the baseline profile.
 
 ---
 
@@ -211,4 +211,4 @@ Definitive proof would require detonation + memory dump + `strings` on the unpac
 | `HKTL_Win_CobaltStrike` | Volexity | 6 strings + 1 hex HTTP header, `all of them` | No — strrep didn't reach export |
 | `MALW_cobaltrike` | Felix Bilstein | 16 opcode patterns, 7-of-16 threshold | No — needs UDRL |
 
-Rule sources archived in `redteam-infra:profiles/docs/*.yar` for reference.
+Rule sources archived alongside the operational profiles for reference.
