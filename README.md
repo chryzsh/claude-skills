@@ -25,6 +25,16 @@ This copies all skills to `~/.claude/skills/` and installs `settings.json` to `~
 | `humanizer` | Rewrite AI-sounding prose. Copied from the [blader/humanizer](https://github.com/blader/humanizer) plugin (v3.0.0, MIT) |
 | `iart` | "I ain't reading that." Summarize long text, files, or links into a short, no-fluff briefing |
 | `writing-clearly-and-concisely` | Strunk, The Elements of Style, as a writing skill. Copied from the elements-of-style plugin in [obra/superpowers-marketplace](https://github.com/obra/superpowers-marketplace) (v1.0.0, public domain) |
+| `re-pipeline` | Lead-agent playbook for security RE with the `reverser` and `assessor` agents: preflight checklist, dispatch template, coordinator rules. Reads host-specific notes from `~/.claude/re-pipeline-local.md` if present |
+
+## Agents
+
+`install.sh` copies `agents/*.md` to `~/.claude/agents/`.
+
+| Agent | Description |
+|-------|-------------|
+| `reverser` | Mythos 5.1 RE specialist. Documents binary behavior neutrally and checkpoints to file |
+| `assessor` | Opus 5.5 security assessor. Works from `reverser` reports, traces each handler's inputs to dangerous sinks |
 
 ## Settings
 
