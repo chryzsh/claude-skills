@@ -56,7 +56,7 @@ When a project has a running plan/findings doc (e.g. `docs/review-plan.md` + `do
 ## Git flow
 
 - Proactively suggest branching before starting a new fix, and suggest committing at each natural completion point — don't wait to be asked. Two logically-distinct fixes left uncommitted together become impossible to split into separate commits later.
-- Commit, push, and opening a PR are three separate approvals. Approval for one doesn't imply the next.
+- Commit and opening a PR are separate approvals. Pushing a private repo needs no approval; pushing a public repo (own or fork) does. Approval for one doesn't imply the next.
 
 ## Writing style
 

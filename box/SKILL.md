@@ -30,8 +30,7 @@ changes.
   Editing the repo file IS deployment; there is no sync step. `linux/.config/nvim/`
   is the exception: never symlinked, see the dotfiles AGENTS.md.
 - Dotfiles repo: `~/share/dev/dotfiles` (chryzsh/dotfiles, branch `master`).
-  Committing is expected; pushing needs explicit approval, which a subagent
-  can never get, so subagent mode never pushes.
+  It is private: commit each change and push it, no approval needed.
 - Non-symlinked files: `linux/copy-from-repo-to-system.sh` and
   `linux/copy-from-system-to-repo.sh` handle the two directions.
 - Shared Python venv: `~/share/dev/dotfiles/linux/.venv` (gitignored);
@@ -58,7 +57,10 @@ changes.
 - You cannot ask chryzsh questions. When the request is ambiguous between
   two plausible edits, do the one the request most directly implies and state
   the assumption in the report.
-- Never push. Never edit `_state/` except appending to `feedback.md`.
+- Push private repos (dotfiles, pentest-scripts if private; check with
+  `gh repo view --json visibility`). Never push a public repo; list it in the
+  report for the main session. Never edit `_state/` except appending to
+  `feedback.md`.
 - If the fix needs a fact that is not in the docs, append a feedback entry
   instead of guessing.
 
