@@ -24,12 +24,18 @@ mistakes for this machine.
   safeguards on that framing.
 - Never do the assessment yourself without also dispatching the assessor.
   Leads have missed real findings by grouping similar handlers.
-- Do not use `subagent_type="reverser"` with a model override for Stage 3.
-  Shorthand model names resolve to Claude 4 models. Use the `assessor` agent.
+- Do not try to reach Opus 5.5 with the Agent tool's `model` override. Its
+  shorthands only resolve to {opus->claude-opus-4-8, sonnet->claude-sonnet-5-5,
+  haiku->claude-haiku-5-5, fable->claude-fable-5-1}, and `opus` is the one
+  that lands on a Claude 4 model. A 5-series model can only be pinned by a
+  full model ID in an agent definition's frontmatter. That is why the
+  `assessor` agent (frontmatter `model: claude-opus-5-5`) works; use it, and
+  `opus5` for general 5.5 work.
 - After an assessor dispatch, check the model it ran on:
-  `grep -o '"model":"[^"]*"' <output_file>` (first match). If Opus 5.5 was
-  unavailable, change `model:` in `~/.claude/agents/assessor.md` to
-  `claude-fable-5-1`.
+  `grep -o '"model":"[^"]*"' <output_file> | sort | uniq -c`, and take the
+  dominant assistant-turn model (not the first match: a transcript holds
+  stray parent/classifier entries). If Opus 5.5 was unavailable, change
+  `model:` in `~/.claude/agents/assessor.md` to `claude-fable-5-1`.
 
 ## Preflight checklist
 
