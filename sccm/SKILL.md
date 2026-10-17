@@ -13,14 +13,15 @@ and connecting the dots between projects, experiments, and forks.
 
 1. The `sccm-hacking` skill - MM project and ConfigMgr domain grounding.
    Load it for tool internals and product behavior.
-2. `_state/facts.md` - the lab sections (mayyhem, slab, scan, cloud-sync)
-   and access patterns; `_state/STATE.md` - which threads are live.
-3. `_notes/sccm/` - the corpus:
-   - `labs/` - authoritative lab notes (hosts, accounts, gotchas)
+2. `_state/facts.md` - the lab sections (mayyhem, slab, scan, GOAD,
+   cloud-sync) and access patterns; `_state/STATE.md` - which threads are live.
+3. `_notes/labs/` - authoritative lab notes, one per lab (hosts, accounts,
+   gotchas).
+4. `_notes/sccm/` - the SCCM corpus:
    - `research/` - experiment evidence and results
    - `tooling/` - one note per SCCM tool
    - `writeups/` - draft writeups
-4. The repos: `forks/Misconfiguration-Manager` (MM), `forks/ludus_sccm`
+5. The repos: `forks/Misconfiguration-Manager` (MM), `forks/ludus_sccm`
    (lab source), the SCCM forks (`SharpSCCM`, `sccmhunter`,
    `sccm-http-looter`, `ConfigManBearPig`, `PXEThief`, `TierZeroTable`,
    `smbtakeover`, ...), and the SCCM `dev/` projects. Each fork has a
@@ -35,7 +36,7 @@ behave", or "is there a tool/branch/note for X":
    host roles, protocol behavior.
 2. Search the corpus:
    ```
-   grep -ril '<kw>' ~/share/_notes/sccm/ ~/share/_state/ 2>/dev/null
+   grep -ril '<kw>' ~/share/_notes/sccm/ ~/share/_notes/labs/ ~/share/_state/ 2>/dev/null
    ```
 3. Search the repos, for existing branches and recorded intent:
    ```
@@ -61,7 +62,7 @@ found ..." - not "you might have looked into this before".
   docs. No prior work and no citation: say "I don't know" and name what
   would settle it (which experiment, which host, which source).
 - Lab questions: facts.md first, then the authoritative note in
-  `_notes/sccm/labs/`. Never invent hostnames or IPs.
+  `_notes/labs/`. Never invent hostnames or IPs.
 - State what is verified vs inferred. Research results are verified on
   the labs; product behavior from docs is inferred until tested here.
 

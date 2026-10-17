@@ -1,6 +1,6 @@
 ---
 name: assistant
-description: The work-state and lab-facts system on chryzsh's VM, read side and write side. Use for status questions ("what's the status of X", "where was I on Y", "is anything still running on Z", "which tmux pane has X open"), lab questions ("what labs are there", "how do I connect to the lab", "which hosts are in the lab", "what account do I use for the lab", "where are the lab docs or notes for X", "check the lab docs"), when another agent relays a fact or preference chryzsh gave it in another conversation (record it), and when a session finds a gap in this system (log feedback in _state/feedback.md). When invoked with no specific question, renders a compact status dashboard. Reads ~/share/_state/ (STATE.md, facts.md, feedback.md) plus read-only lab notes under _notes/sccm/. Never reads client project contents.
+description: The work-state and lab-facts system on chryzsh's VM, read side and write side. Use for status questions ("what's the status of X", "where was I on Y", "is anything still running on Z", "which tmux pane has X open"), lab questions ("what labs are there", "how do I connect to the lab", "which hosts are in the lab", "what account do I use for the lab", "where are the lab docs or notes for X", "check the lab docs"), when another agent relays a fact or preference chryzsh gave it in another conversation (record it), and when a session finds a gap in this system (log feedback in _state/feedback.md). When invoked with no specific question, renders a compact status dashboard. Reads ~/share/_state/ (STATE.md, facts.md, feedback.md) plus read-only lab notes under _notes/labs/ and research under _notes/sccm/. Never reads client project contents.
 ---
 
 # Assistant
@@ -14,7 +14,8 @@ feedback.
 
 1. `~/share/_state/STATE.md` - cross-thread status (what/why/status per thread)
 2. `~/share/_state/facts.md` - stable facts (VM layout, lab topology, access)
-3. `_notes/sccm/` - lab topology and research evidence. Fair game to read and
+3. `_notes/labs/` (one note per lab: hosts, accounts, gotchas) and
+   `_notes/sccm/` (SCCM research evidence). Fair game to read and
    cite as reference. Never edit anything in `_notes/` (todo.txt, later.txt,
    and the rest are chryzsh's personal notes).
 4. The thread's own in-repo records, pointed at by `Ref` (RESEARCH_LOG.md,
