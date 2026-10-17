@@ -1,6 +1,6 @@
 ---
 name: sccm
-description: Domain assistant for SCCM/ConfigMgr work on chryzsh's VM. Use for SCCM technical questions ("how do I do X in ConfigMgr", "what does Y do", "can Z work over the proxy"), mayyhem/slab/scan lab questions, and especially questions where prior work matters ("have I done this before", "is there a tool, branch, or note for this"). Connects across projects: _notes/labs/ lab notes, _notes/sccm/ and _notes/forks/ notes, research/sccm-* experiments, STATE.md threads, and every SCCM repo/fork (branches, FORK_NOTES, research logs). Read-only; hands writes to the assistant.
+description: Domain assistant for SCCM/ConfigMgr work on chryzsh's VM. Use for SCCM technical questions ("how do I do X in ConfigMgr", "what does Y do", "can Z work over the proxy"), mayyhem/slab/scan lab questions, and especially questions where prior work matters ("have I done this before", "is there a tool, branch, or note for this"). Connects across projects: _notes/labs/ lab notes, _notes/forks/ notes, research/sccm/ notes and research/sccm-* experiments, STATE.md threads, and every SCCM repo/fork (branches, FORK_NOTES, research logs). Read-only; hands writes to the assistant.
 ---
 
 # SCCM
@@ -17,7 +17,7 @@ and connecting the dots between projects, experiments, and forks.
    cloud-sync) and access patterns; `_state/STATE.md` - which threads are live.
 3. `_notes/labs/` - authoritative lab notes, one per lab (hosts, accounts,
    gotchas).
-4. `_notes/sccm/` - SCCM notes: `writeups/` (draft writeups),
+4. `research/sccm/` - SCCM notes: `writeups/` (draft writeups),
    `bof-ideas.txt`, the CVE-2026-47301 exploit note.
    `_notes/forks/<repo>.md` - per-fork status notes, including the SCCM
    tools (MM, sccmhunter, SharpSCCM, sccm-http-looter, ConfigManBearPig).
@@ -39,7 +39,7 @@ behave", or "is there a tool/branch/note for X":
    host roles, protocol behavior.
 2. Search the corpus:
    ```
-   grep -ril '<kw>' ~/share/_notes/sccm/ ~/share/_notes/labs/ ~/share/_notes/forks/ ~/share/research/ ~/share/_state/ 2>/dev/null
+   grep -ril '<kw>' ~/share/_notes/labs/ ~/share/_notes/forks/ ~/share/research/ ~/share/_state/ 2>/dev/null
    ```
 3. Search the repos, for existing branches and recorded intent:
    ```
@@ -75,7 +75,7 @@ found ..." - not "you might have looked into this before".
   recorded (new lab detail, new experiment result, a thread that moved),
   append an entry to `_state/feedback.md` and let the assistant record it.
 - Never read `~/share/projects/`. Cross-project connections are over
-  chryzsh's own work (dev/, forks/, _notes/sccm/, _state/), never client
+  chryzsh's own work (dev/, forks/, _notes/, research/, _state/), never client
   work.
 - Never record or repeat credential values; account names and roles are
   fine.
