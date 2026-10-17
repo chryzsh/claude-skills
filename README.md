@@ -1,6 +1,6 @@
 # Claude Skills
 
-Custom Claude Code skills and settings.
+Custom Claude Code skills and agents.
 
 ## Install
 
@@ -10,7 +10,7 @@ cd claude-skills
 ./install.sh
 ```
 
-This copies all skills to `~/.claude/skills/` and installs `settings.json` to `~/.claude/settings.json` (backs up any existing one). Restart Claude Code after installing.
+This copies all skills to `~/.claude/skills/` and agents to `~/.claude/agents/`. It does not touch `~/.claude/settings.json` or `~/.claude/CLAUDE.md`. Restart Claude Code after installing.
 
 ## Skills
 
@@ -35,10 +35,6 @@ This copies all skills to `~/.claude/skills/` and installs `settings.json` to `~
 |-------|-------------|
 | `reverser` | Mythos 5.1 RE specialist. Documents binary behavior neutrally and checkpoints to file |
 | `assessor` | Opus 5.5 security assessor. Works from `reverser` reports, traces each handler's inputs to dangerous sinks |
-
-## Settings
-
-`settings.json` contains a bash command allowlist/denylist. Destructive commands (`rm`, `git push --force`, `gh repo delete`, etc.) are denied. Common dev commands are auto-approved.
 
 ## Notes
 

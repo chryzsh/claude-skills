@@ -3,7 +3,6 @@ set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 SKILLS_DIR="$HOME/.claude/skills"
-SETTINGS_DST="$HOME/.claude/settings.json"
 
 git -C "$REPO_DIR" submodule update --init --recursive
 
@@ -39,14 +38,7 @@ if [[ -d "$REPO_DIR/agents" ]]; then
   echo "Installed agent(s) to $HOME/.claude/agents"
 fi
 
-# Install settings.json (with backup)
-if [[ -f "$REPO_DIR/settings.json" ]]; then
-  if [[ -f "$SETTINGS_DST" ]]; then
-    cp "$SETTINGS_DST" "$SETTINGS_DST.bak"
-    echo "Backed up existing settings to $SETTINGS_DST.bak"
-  fi
-  cp "$REPO_DIR/settings.json" "$SETTINGS_DST"
-  echo "Installed settings.json to $SETTINGS_DST"
-fi
+# This script never writes ~/.claude/settings.json or ~/.claude/CLAUDE.md.
+# Those are personal config, kept and linked from a private dotfiles repo.
 
 echo "Done. Restart Claude Code to pick up changes."
