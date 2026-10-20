@@ -1,0 +1,17 @@
+{
+  "skill_name": "async-bof",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "write an async BOF that tells me when a new process starts on the host",
+      "expected_output": "A plain COFF or BOF-PE async BOF that gets the stop event through the volatile guard, waits on it instead of Sleep, batches output per event, calls BeaconWakeup only on output, and releases resources before returning.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "I have a BOF-PE that polls a share for new files. make my BOF-PE async so it runs as a job in OC2 and I can stop it",
+      "expected_output": "Changes that add the stop-event wait loop, the missing-API error path, the MinGW atexit fix if built with MinGW, and an OC2 .s1.py with bof_type=BOFType.ASYNC.",
+      "files": []
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+[
+  {"query": "write an async BOF that tells me when a new process starts on the host", "should_trigger": true},
+  {"query": "I have a BOF-PE that polls a share for new files. make my BOF-PE async so it runs as a job in OC2 and I can stop it", "should_trigger": true},
+  {"query": "need a bof that watches the Security event log for 4624 logons and reports them back as they happen, beacon should keep working meanwhile", "should_trigger": true},
+  {"query": "write a BOF that lists local groups and their members on the target", "should_trigger": false},
+  {"query": "convert this python script that enumerates scheduled tasks into a BOF-PE with C++ exceptions", "should_trigger": false}
+]

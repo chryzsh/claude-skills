@@ -17,6 +17,7 @@ This copies all skills to `~/.claude/skills/` and agents to `~/.claude/agents/`.
 | Skill | Description |
 |-------|-------------|
 | `bof-development` | Develop Beacon Object Files for red team operations |
+| `async-bof` | Write async BOFs and BOF-PEs that run on their own C2 thread (Outflank async BOF spec) |
 | `bof-code-review-skill` | Code review for BOF projects |
 | `oc2-bof-script-generator` | Convert Cobalt Strike .cna scripts to OC2 Python format |
 | `codex-prepush-review` | Pre-push code review using Codex CLI as a review partner |

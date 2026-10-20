@@ -9,6 +9,8 @@ description: Develop BOF-PE (Beacon Object File Portable Executable) files for C
 
 BOF-PE is a next-generation design for Beacon Object Files using fully-linked PE executables instead of COFF object files. Unlike traditional BOFs, BOF-PEs support full C++ (STL, templates, exceptions), standard Windows API imports, multiple source files, and standalone execution.
 
+For async BOF-PEs (long-running, event-driven, `BeaconGetStopJobEvent`/`BeaconWakeup`), also use the `async-bof` skill.
+
 ## Template Selection
 
 Choose the template based on requirements:

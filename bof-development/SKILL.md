@@ -20,7 +20,7 @@ description: Develop Beacon Object Files (BOFs) for C2 frameworks. Use for creat
 - Network reconnaissance, credential access, privilege checks
 
 **NOT suitable for BOFs (use execute-assembly or fork & run):**
-- Long-running operations (blocks beacon)
+- Long-running operations (blocks beacon), unless the C2 supports async BOFs. For async, event-driven, or monitoring BOFs, use the `async-bof` skill
 - Complex .NET requiring CLR
 - Large memory allocations (>1MB stack)
 - GUI operations, complex exception handling
