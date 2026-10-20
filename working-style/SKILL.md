@@ -1,6 +1,7 @@
 ---
 name: working-style
-description: chryzsh's personal working-style preferences for hands-on coding sessions — who runs which commands, teaching-mode debugging workflow, proficiency calibration, verification discipline, git flow, writing style. Load at the start of any bug-fix, debugging, or code-review session with chryzsh, or before proposing/discussing a fix.
+description: chryzsh's personal working-style preferences for hands-on coding sessions — who runs which commands, teaching-mode debugging workflow, proficiency calibration, verification discipline, git flow, writing style. Only load when chryzsh asks for it by name.
+disable-model-invocation: true
 ---
 
 # How I (chryzsh) work with an AI agent
