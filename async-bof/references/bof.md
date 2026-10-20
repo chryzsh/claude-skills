@@ -27,9 +27,37 @@ static void Wakeup(void) {
 }
 ```
 
-The C++ form (`decltype(...) volatile fn`) was confirmed in disassembly. For this C form, the example below was compiled with `x86_64-w64-mingw32-gcc -Os`, and `objdump -dr` shows the `__imp_BeaconGetStopJobEvent` slot loaded and tested before the call. Check the disassembly again after you build with other flags or compilers.
+`HANDLE (*volatile fn)(void)` is a volatile-qualified pointer to a function, which is valid C. It compiles without warnings under `-std=c99 -Wall -Wextra -pedantic`.
 
-How a COFF loader without the async API treats the unresolved symbol depends on the loader. Some may refuse to load the BOF, others may resolve it to NULL. The guard only helps in the second case. This is not verified per loader.
+Disassembly check: the guard was built as a COFF object (`-c`, the way BOFs are built) with MinGW GCC 15 (`x86_64-w64-mingw32-gcc` and `i686-w64-mingw32-gcc`, each at `-O2` and `-Os`). In all four builds, `objdump -dr` shows the `__imp_BeaconGetStopJobEvent` slot loaded, tested, and skipped when NULL, before the call. x86_64 `-O2`:
+
+```
+mov    0x0(%rip),%rax        IMAGE_REL_AMD64_REL32  __imp_BeaconGetStopJobEvent
+mov    %rax,0x20(%rsp)
+mov    0x20(%rsp),%rax
+test   %rax,%rax
+je     <error path>
+call   *%rax
+```
+
+i686 shows the same shape with `dir32 __imp__BeaconGetStopJobEvent`. A plain `BeaconGetStopJobEvent != NULL ? BeaconGetStopJobEvent() : NULL` in the same file compiles to a bare `jmp *__imp_BeaconGetStopJobEvent` with no test, and GCC warns `the comparison will always evaluate as 'true'` (`-Waddress`). Treat that warning as a bug. Check the disassembly again if you change compiler.
+
+### What the Guard Covers
+
+The guard tests the slot the loader filled in. It helps only if the loader runs the BOF with that slot set to NULL. COFF loaders checked from source:
+
+| Loader | Unknown `__imp_Beacon*` import | Source |
+|--------|--------------------------------|--------|
+| trustedsec COFFLoader | Refuses to run. `process_symbol` returns NULL, the loader stops before `go`. The message is a `DEBUG_PRINT` only | `COFFLoader.c:131-175`, `386-391` (commit `edfa763`) |
+| Sliver COFFLoader (sliverarmory) | Refuses to run, same code | `COFFLoader.c:421-425` (commit `28e4981`) |
+| Havoc Demon CoffeeLdr (open source) | Refuses to run. Sends `SYMBOL_NOT_FOUND` with the symbol name, then `COULD_NO_RUN`. Has no async API | `src/core/CoffeeLdr.c:102-120`, `232-238`, `471-474`, `764-787` (commit `c84f775`) |
+| Adaptix C2 beacon agent | Resolves both async functions. An unknown `Beacon*` name fails with `BOF_ERROR_SYMBOL` and the BOF does not run | `bof_loader.cpp:86-87`, `98-131`, `223-228` (commit `e99535c`) |
+| Cobalt Strike | Documented for Dynamic Function Resolution: "Cobalt Strike will refuse to execute the BOF and tell you which function it couldn't resolve." Unknown `Beacon*` names are not documented | [CS user guide, Dynamic Function Resolution](https://hstechdocs.helpsystems.com/manuals/cobaltstrike/current/userguide/content/topics/beacon-object-files_dynamic-func-resolution.htm) |
+
+So for a plain COFF BOF:
+- No checked loader resolves a missing Beacon import to NULL. Under a C2 without the async API, expect a load error that names `BeaconGetStopJobEvent`, not your own error message.
+- The common runtime case is a C2 that has the API but runs the BOF as a normal, synchronous task. Adaptix then returns NULL from `BeaconGetStopJobEvent`, because the thread has no async job context (`beacon_functions.cpp:478-484`). The `if (!stop)` check on the returned handle covers this case, not the address guard.
+- Keep the guard anyway. It costs a few instructions and covers a loader that writes NULL for an unknown import. The BOF-PE proof-of-concept loader does this (see [bof-pe.md](bof-pe.md)).
 
 ## Example: Watch a Path
 
@@ -111,4 +139,4 @@ Notes:
 
 ## Event Sources Other Than Polling
 
-For APIs that call back on their own threads (for example `EvtSubscribe` with a callback, or thread pool waits), do not write output from the callback directly. Push the event into a buffer protected by a lock, or a queue, and signal a second event. The BOF thread waits on both the stop event and that event with `WaitForMultipleObjects`, drains the buffer, sends one batch, and calls `BeaconWakeup`. Unregister the callback before freeing the buffer.
+For APIs that call back on their own threads (for example `EvtSubscribe` with a callback, or thread pool waits), do not call `BeaconPrintf` or `BeaconOutput` from the callback. In Adaptix that output does not reach the job (see "Output From Other Threads" in SKILL.md). Push the event into a buffer protected by a lock, or a queue, and signal a second event. The BOF thread waits on both the stop event and that event with `WaitForMultipleObjects`, drains the buffer, sends one batch, and calls `BeaconWakeup`. Unregister the callback before freeing the buffer.

@@ -3,7 +3,7 @@
 Test three paths for every async BOF:
 1. **Event path**: the BOF detects the event, sends output, and wakes the beacon.
 2. **Stop path**: the BOF exits cleanly when the stop event is signaled, and releases all resources.
-3. **Missing-API path**: under a C2 or loader without the async API, the BOF prints a clear error and returns, instead of crashing.
+3. **Missing-API path**: when the BOF runs without an async job, it prints a clear error and returns, instead of crashing. Test it by running the BOF as a normal task on a C2 that has the API (Adaptix returns a NULL stop event then). A COFF loader without the API refuses to load the BOF and names the missing symbol, so you do not see your own message there (see [bof.md](bof.md)).
 
 ## Standalone BOF-PE with beacon.dll
 
@@ -31,7 +31,7 @@ Defender quarantines `beacon.dll` as `VirTool:Win64/MeterBof.A` when it loads, e
 
 Testing under the C2 avoids `beacon.dll` entirely and runs the BOF on the real C2 thread. This is the only way to check:
 - whether `make_token` or `steal_token` impersonation applies to the async thread (test network access with and without it)
-- how the C2 handles output from the async thread and the stop command
+- how the C2 handles output from the async thread and the stop command. The standalone `beacon.dll` locks output, so a print from a callback thread works there but is dropped or misattributed in Adaptix (see "Output From Other Threads" in SKILL.md)
 - that the host process stays up after the job stops and at process exit (for MinGW BOF-PEs, see the exit crash in [bof-pe.md](bof-pe.md))
 
 ## Example Results

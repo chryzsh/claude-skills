@@ -49,7 +49,7 @@ for (;;) {
 
 ## Detecting the Async API (GCC)
 
-With GCC, a plain `BeaconGetStopJobEvent != nullptr` check on a dllimport function is optimized away. GCC assumes a function address is never NULL, so under a C2 without the async API the BOF calls a NULL pointer. This was confirmed in disassembly. Read the address through a volatile local:
+With GCC, a plain `BeaconGetStopJobEvent != nullptr` check on a dllimport function is optimized away. GCC assumes a function address is never NULL, so if the loader leaves the import NULL, the BOF calls a NULL pointer. This was confirmed in disassembly, and GCC warns about it with `-Waddress` ("the comparison will always evaluate as 'true'"). Read the address through a volatile local:
 
 ```cpp
 static HANDLE GetStopEvent() {
@@ -60,6 +60,10 @@ static HANDLE GetStopEvent() {
 
 Guard `BeaconWakeup` the same way if it can run on that error path. NetSPI BOFscale's socksportfwd uses the plain check, so do not copy that part. The C form is in [references/bof.md](references/bof.md).
 
+What each check covers:
+- **Address guard.** Covers a loader that runs the BOF with the import set to NULL. The BOF-PE proof-of-concept loader does this. The COFF loaders checked from source (trustedsec and Sliver COFFLoader, Havoc Demon, Adaptix) refuse to run a BOF with an unknown `Beacon*` import, and Cobalt Strike documents the same for unresolved functions. Under those, the operator sees a load error, not the BOF's message. Per-loader sources are in [references/bof.md](references/bof.md).
+- **NULL handle check.** Covers a C2 that has the API but runs the BOF as a normal task. Adaptix returns NULL from `BeaconGetStopJobEvent` on a thread with no async job context. This is the case most BOFs hit in practice, so always check the returned handle.
+
 ## Thread and Lifecycle Rules
 
 - **Wait on the stop event, not Sleep.** Use `WaitForSingleObject` or `WaitForMultipleObjects` with the stop event in the handle set. A `Sleep` loop cannot react to a stop request until it wakes.
@@ -68,14 +72,26 @@ Guard `BeaconWakeup` the same way if it can run on that error path. NetSPI BOFsc
 - **Batch output per event.** Build one buffer per event or per wait cycle and send it in one call, instead of many small `BeaconPrintf` calls.
 - **Release every resource before the entry point returns.** Handles, subscriptions, heap memory, COM objects. The C2 frees the BOF after the entry returns, and any callback still registered then points into freed memory.
 - **Expect a thread the C2 created.** It has not joined a COM apartment. If you use COM, call `CoInitializeEx` yourself, and call `CoUninitialize` only if it returned `S_OK` or `S_FALSE`.
-- **Callbacks arrive on other threads.** APIs such as `EvtSubscribe` call back on threads the BOF did not create. Queue output from the callback and drain it on the BOF thread, or protect shared output with a lock.
+- **Callbacks arrive on other threads.** APIs such as `EvtSubscribe` call back on threads the BOF did not create. Do not call Beacon output functions there. Queue the data under a lock and print it from the BOF thread. See "Output From Other Threads" below.
 - **Impersonation may not carry over.** A token applied with `make_token` or `steal_token` may not apply to the C2's async thread, so network authentication may silently use the beacon's base identity. This is not verified per C2. Test it if the BOF touches the network.
 - **Fail clearly without the async API.** A BOF that requires async must detect the API and print a clear error when it is missing.
+
+## Output From Other Threads
+
+Call `BeaconPrintf`, `BeaconOutput`, and `BeaconGetStopJobEvent` only from the thread the C2 started for the BOF. Evidence from Adaptix C2 (beacon agent, commit `e99535c`):
+- The job context is thread-local: `__declspec(thread) AsyncBofContext* tls_CurrentBofContext` (`Boffer.cpp:7`). Only the C2's async thread sets it (`Boffer.cpp:108`).
+- `BofOutputToTask` sends output to the job only if that thread-local context is set (`beacon_functions.cpp:17-30`, `48-51`). On a callback thread it is NULL, so output goes to the global synchronous BOF buffer instead, with no lock and with the global `bofTaskId`.
+- That global buffer exists only after a synchronous BOF has run (`bof_loader.cpp:30-34`). `bofTaskId` is 0 between tasks, or the ID of an unrelated synchronous BOF that is running (`bof_loader.cpp:316`, `360`). The buffer is sent and cleared only when a synchronous BOF finishes (`Commander.cpp:364-373`).
+- Result: output from a callback thread is dropped (no buffer yet), held until some unrelated BOF finishes and then sent under the wrong task ID, or written while the main thread writes the same buffer.
+- `BeaconGetStopJobEvent` on a callback thread returns NULL for the same reason (`beacon_functions.cpp:478-484`).
+- `BeaconWakeup` only calls `SetEvent` on a global event (`beacon_functions.cpp:472-476`, `Boffer.cpp:360-364`), so it works from any thread. Still call it from the BOF thread after printing, so the wakeup follows the output.
+
+Other implementations: the standalone `beacon.dll` in chryzsh/BOF-PE async locks console output (`beacon/beacon.cpp:188`), so a callback-thread print works there and a standalone test does not show the Adaptix problem. trustedsec COFFLoader appends output to a global buffer with `realloc` and no lock (`beacon_compatibility.c:258-280`).
 
 ## Checklist
 
 Do:
-- Get the stop event through the volatile guard and exit with an error if it is NULL.
+- Get the stop event on the BOF thread, through the volatile guard, and exit with an error if the handle is NULL.
 - Put the stop event in every wait.
 - Send one output batch per event, then call `BeaconWakeup`.
 - Unregister callbacks and subscriptions before freeing anything they use.
@@ -86,7 +102,7 @@ Don't:
 - Use `Sleep` as the main loop delay.
 - Call `CloseHandle` on the stop event.
 - Call `BeaconWakeup` on every loop iteration.
-- Call `BeaconPrintf` from a callback thread without a lock, unless the C2 documents that it is safe.
+- Call `BeaconPrintf` or `BeaconOutput` from a thread the C2 did not start, even with your own lock. In Adaptix the job context is thread-local, so that output is dropped or sent under the wrong task. Queue it and print from the BOF thread.
 - Rely on a plain `!= NULL` check of an imported function under GCC.
 - Assume `make_token` or `steal_token` applies to the async thread.
 
@@ -109,6 +125,6 @@ OC2 notes:
 
 ## Reference Implementations
 
-- Adaptix C2 `beacon_functions.cpp`: keeps a per-job stop event in thread-local context, and buffers output from async threads per job under a lock.
+- Adaptix C2 `beacon_functions.cpp` and `Boffer.cpp`: keeps the per-job stop event and output buffer in a thread-local context, set only on the C2's async thread. Output from that thread is buffered per job under a lock.
 - NetSPI BOFscale socksportfwd: an async BOF-PE. Its OC2 script uses `bof_type=BOFType.ASYNC`.
 - [chryzsh/BOF-PE async branch](https://github.com/chryzsh/BOF-PE/tree/async): `beacon/beacon.h` with the async API and the MinGW exit fix, and `samples/procwatch`, an async BOF-PE that reports process start and exit.
