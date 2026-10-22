@@ -84,3 +84,5 @@ For a complete working sample, see `samples/procwatch` in [chryzsh/BOF-PE async]
 
 - The OC2 runtime looks for `<base_binary_name>.x64.o` and `<base_binary_name>.x86.o`. Install the BOF-PE build under that name, even though it is a PE.
 - In the `.s1.py` script, set `bof_type=BOFType.ASYNC`. NetSPI BOFscale socksportfwd is an example.
+- Name the script `<name>_bof.s1.py`. OC2 skips `<name>.s1.py` without logging an error, and the command shows as "Command not found".
+- Plain `exec_bof` runs an async BOF-PE sync. OC2 then does not provide the async API and fails with "BOF-PE unable to resolve function BeaconGetStopJobEvent from beacon.dll". Use the script command, which sends `exec_bof_async`.

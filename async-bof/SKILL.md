@@ -121,6 +121,8 @@ Per an Outflank developer:
 
 OC2 notes:
 - The `.s1.py` script sets `bof_type=BOFType.ASYNC`.
+- Name the script `<name>_bof.s1.py`. OC2 does not load `<name>.s1.py`, logs no error, and the command shows as "Command not found".
+- Run the BOF through its script command, which sends `exec_bof_async`. Plain `exec_bof` runs it sync, and OC2 then fails with "BOF-PE unable to resolve function BeaconGetStopJobEvent from beacon.dll".
 - The runtime looks for `<base_binary_name>.x64.o` and `.x86.o`, so install BOF-PE builds under that name too.
 
 ## Reference Implementations
